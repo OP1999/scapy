@@ -15,36 +15,43 @@ NTPClientSocket = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
 NTPClientSocket.bind((localIP, localPort))
 print("NTP Client up and listening")
 
-# Window allowing the user to choose whether to send or receive a message with a server
-layout = [  [sg.Text("Input the message you would like to send to the server")],
-            [sg.Input()],
-            [sg.Text(size=(40,1), key='-OUTPUT-')],
-            [sg.Button('Send')]]
+# # Window allowing the user to choose whether to send or receive a message with a server
+# layout = [  [sg.Text("Input the message you would like to send to the server")],
+#             [sg.Input()],
+#             [sg.Text(size=(40,1), key='-OUTPUT-')],
+#             [sg.Button('Send')]]
 
-window = sg.Window('Send Server Message', layout)
+# window = sg.Window('Send Server Message', layout)
                                                 
-event, value = window.read()
-sg.popup("Your message: ", value[0], "will be sent to the server")
+# event, value = window.read()
+# sg.popup("Your message: ", value[0], "will be sent to the server")
 
-window.close()
+# window.close()
+# textToSend = value[0]
 
-# textToSend = "hi"
-textToSend = value[0]
-ntpMessage = ""
-ntpReceived = ""
+with open('NTPSampleText.txt') as f:
+    readFile = f.readlines()
+textToSend = readFile[0]
 
 ascii_values = [ord(character) for character in textToSend]
 
-# Sends a packet with the length of the message
-if(len(ascii_values) < 10):
-    refTimeWithLength = float128(str(datetime.datetime.timestamp(datetime.datetime.utcnow()))[:-3] + "00" + str(len(ascii_values))) + NTPMethods.date_diff
-else:
-    refTimeWithLength = float128(str(datetime.datetime.timestamp(datetime.datetime.utcnow()))[:-3] + "0" + str(len(ascii_values))) + NTPMethods.date_diff
+cryptoKey = 40
+ntpMessage = ""
 
-initialPacket = IP(dst=localIP)/UDP(sport=localPort, dport=destinationPort)/NTP(version=4, mode='client', ref=refTimeWithLength)
-# initialPacket = IP(dst=localIP)/UDP(sport=localPort)/NTP(version=4, mode='client', ref=refTimeWithLength)
-initialPacket.show()
-send(initialPacket)
+def send_custom_packet(offset):
+    # Sends a packet with the length of the message
+    if(len(ascii_values) < 10):
+        refTimeWithOffset = float128(str(datetime.datetime.timestamp(datetime.datetime.utcnow()))[:-3] + "00" + offset) + NTPMethods.date_diff
+    else:
+        refTimeWithOffset = float128(str(datetime.datetime.timestamp(datetime.datetime.utcnow()))[:-3] + "0" + offset) + NTPMethods.date_diff
+
+    initialPacket = IP(dst=localIP)/UDP(sport=localPort, dport=destinationPort)/NTP(version=4, mode='client', ref=refTimeWithOffset)
+    # initialPacket = IP(dst=localIP)/UDP(sport=localPort)/NTP(version=4, mode='client', ref=refTimeWithOffset)
+    initialPacket.show()
+    send(initialPacket)
+
+# send_custom_packet(cryptoKey)
+send_custom_packet(str(len(ascii_values)))
 
 while(True):
     # Runs for the length of the message it is sending
@@ -62,7 +69,7 @@ while(True):
         message = bytesAddressPair[0]
         address = bytesAddressPair[1]
 
-        # serverIP  = "Server IP Address:{}".format(address)
+        # serverIP = "Server IP Address:{}".format(address)
         # print(serverIP)
 
         answer = NTPMethods.NTPPacket()
@@ -72,17 +79,15 @@ while(True):
 
         print(ntpResponse)
         
-        # # Should Print letter 'R' if message successfully received
-        # ntpReceived += character
-        # print(character)
-        
+        # Should Print letter 'R' if message successfully received
         ntpMessage += character
+        # print(ntpMessage)
 
         time.sleep(1)
     
-    if(len(ntpReceived) == len(textToSend)):
+    if(len(ntpMessage) == len(textToSend)):
         print(ntpMessage)
-        # Prints Message Received & Writes it to a text file the closes connection
+        # Prints Message Received & Writes it to a text file then closes connection
         with open("NTPClientMessage.txt", "w") as text_file:
             print(f"{ntpMessage}", file=text_file)
 

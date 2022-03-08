@@ -51,7 +51,7 @@ while(True):
         message = bytesAddressPair[0]
         address = bytesAddressPair[1]
 
-        # clientIP  = "Client IP Address:{}".format(address)   
+        # clientIP = "Client IP Address:{}".format(address)   
         # print(clientIP)
 
         answer = NTPMethods.NTPPacket()
@@ -76,7 +76,7 @@ while(True):
         # print(ntpMessage)
     
     if(len(ntpMessage) == messageLength):
-        # Prints Message Received & Writes it to a text file the closes connection
+        # Prints Message Received & Writes it to a text file then closes connection
         with open("NTPServerMessage.txt", "w") as text_file:
             print(f"{ntpMessage}", file=text_file)
     
