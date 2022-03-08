@@ -34,7 +34,6 @@ ntpMessage = ""
 ntpReceived = ""
 
 ascii_values = [ord(character) for character in textToSend]
-# print(ascii_values)
 
 # Sends a packet with the length of the message
 if(len(ascii_values) < 10):
@@ -72,23 +71,23 @@ while(True):
         character = NTPMethods.get_message(answer)
 
         print(ntpResponse)
-        ntpReceived += character
         
         # # Should Print letter 'R' if message successfully received
+        # ntpReceived += character
         # print(character)
         
-        # # Prints Message Received
-        # ntpMessage += character
-        # print(ntpMessage)
+        ntpMessage += character
 
         time.sleep(1)
     
     if(len(ntpReceived) == len(textToSend)):
+        print(ntpMessage)
         # Prints Message Received & Writes it to a text file the closes connection
         with open("NTPClientMessage.txt", "w") as text_file:
             print(f"{ntpMessage}", file=text_file)
 
         sg.popup("Message: ", value[0], "Successfully sent to the server")
 
-    time.sleep(10)   
+    print(ntpMessage)
+    time.sleep(5)   
     NTPClientSocket.close()

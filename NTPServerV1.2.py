@@ -31,7 +31,6 @@ textToSend = "hello client"
 ntpMessage = ""
 
 ascii_values = [ord(character) for character in textToSend]
-# print(ascii_values)
 
 while(True): 
     bytesAddressPair = NTPServerSocket.recvfrom(bufferSize)
@@ -46,8 +45,8 @@ while(True):
     for i in range(messageLength):
         bytesAddressPair = NTPServerSocket.recvfrom(bufferSize)
         
-        # Replies 'R' to show letter is received
-        recTimeWithMessage = float128(str(datetime.datetime.timestamp(datetime.datetime.utcnow()))[:-3] + "082") + NTPMethods.date_diff
+        # # Replies 'R' to show letter is received
+        # recTimeWithMessage = float128(str(datetime.datetime.timestamp(datetime.datetime.utcnow()))[:-3] + "082") + NTPMethods.date_diff
         
         message = bytesAddressPair[0]
         address = bytesAddressPair[1]
@@ -59,15 +58,14 @@ while(True):
         answer = NTPMethods.unpack(answer, message, 1)
         ntpResponse = NTPMethods.to_display(answer)
         character = NTPMethods.get_message(answer)
-
-        # if(ascii_values[i] < 100):
-        #     recTimeWithMessage = float128(str(datetime.datetime.timestamp(datetime.datetime.utcnow()))[:-3] + "0" + str(ascii_values[i])) + NTPMethods.date_diff
-        # else :
-        #     recTimeWithMessage = float128(str(datetime.datetime.timestamp(datetime.datetime.utcnow()))[:-3] + str(ascii_values[i])) + NTPMethods.date_diff
-
-        # # Replies 'R' to show letter is received
-        # refTimeWithMessage = float128(str(datetime.datetime.timestamp(datetime.datetime.utcnow()))[:-3] + "082") + NTPMethods.date_diff
-
+        try:
+            if(ascii_values[i] < 100):
+                recTimeWithMessage = float128(str(datetime.datetime.timestamp(datetime.datetime.utcnow()))[:-3] + "0" + str(ascii_values[i])) + NTPMethods.date_diff
+            else :
+                recTimeWithMessage = float128(str(datetime.datetime.timestamp(datetime.datetime.utcnow()))[:-3] + str(ascii_values[i])) + NTPMethods.date_diff
+        except:
+            recTimeWithMessage = float128(str(datetime.datetime.timestamp(datetime.datetime.utcnow()))[:-3] + "032") + NTPMethods.date_diff
+            
         returnPacket = IP(dst=address[0])/UDP(sport=localPort,dport=address[1])/NTP(version=4, mode='server', recv=recTimeWithMessage)
         send(returnPacket)
 
@@ -79,11 +77,11 @@ while(True):
     
     if(len(ntpMessage) == messageLength):
         # Prints Message Received & Writes it to a text file the closes connection
-        print(ntpMessage)
         with open("NTPServerMessage.txt", "w") as text_file:
             print(f"{ntpMessage}", file=text_file)
     
         sg.popup("Message:", ntpMessage, "Successfully received from client")
-
-    time.sleep(10)   
+    
+    print(ntpMessage)
+    time.sleep(5)   
     NTPServerSocket.close()
