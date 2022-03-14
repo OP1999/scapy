@@ -4,6 +4,7 @@ import socket
 import NTPMethods
 import datetime
 import PySimpleGUI as sg
+import os.path
 
 localIP = "127.0.0.1"
 localPort = 50005
@@ -15,15 +16,15 @@ NTPClientSocket = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
 NTPClientSocket.bind((localIP, localPort))
 print("NTP Client up and listening")
 
-# textToSend = ""
-# ascii_values = []
 # cryptoKey = 40
-ntpMessage = ""
+global layout
+global ntpMessage
 
 def read_text_from_file(fileName):
-    with open(fileName) as f:
-        readFile = f.readlines()
-    textToSend = readFile[0]
+    if(os.path.splitext(fileName)[1] == '.docx'):
+        textToSend = NTPMethods.getTextFromDoc(fileName)
+    else :
+        textToSend = NTPMethods.getTextFromTxt(fileName)
     convert_text_to_ascii(textToSend)    
 
 def read_image_from_file(fileName): 
@@ -51,7 +52,9 @@ def send_custom_packet(int_values):
     send_client_packet(int_values)
 
 def send_client_packet(ascii_values):
-# while(True):
+    global layout
+    global ntpMessage
+    ntpMessage = ""
     # Runs for the length of the message it is sending
     for i in range(len(ascii_values)):
         if(ascii_values[i] < 100):
@@ -78,24 +81,22 @@ def send_client_packet(ascii_values):
         print(ntpResponse)
         
         # Should Print letter 'R' if message successfully received
-        # ntpMessage += character
-        # print(ntpMessage)
+        ntpMessage += character
 
-        time.sleep(1)
+        # time.sleep(1)
     
-    # if(len(ntpMessage) == len(ascii_values)):
-    #     print(ntpMessage)
-    #     # Prints Message Received & Writes it to a text file then closes connection
-    #     with open("NTPClientMessage.txt", "w") as text_file:
-    #         print(f"{ntpMessage}", file=text_file)
+    if(len(ntpMessage) == len(ascii_values)):
+        print(ntpMessage)
+        # Prints Message Received & Writes it to a text file then closes connection
+        with open("NTPClientMessage.txt", "w") as text_file:
+            print(f"{ntpMessage}", file=text_file)
+    
+    layout = 0
 
-    #     sg.popup("Message successfully sent to the server")
+# ----------- Create the 4 layouts this Window will display -----------
+layoutSuccSent = [  [sg.Text("Client successfully Sent a Message")],
+                    [sg.Text(key="-NTPText-")]    ]
 
-    # print(ntpMessage)
-    # time.sleep(5)   
-    # NTPClientSocket.close()
-
-# ----------- Create the 3 layouts this Window will display -----------
 layout1 = [ [sg.Text("Input the message you would like to send to the server")],
             [sg.Input(key="-IN1-")]    ]
 
@@ -106,18 +107,20 @@ layout3 = [ [sg.Text('Send Image via NTP')],
             [sg.Text("Choose a file: "), sg.Input(key="-IN3-", change_submits=True), sg.FileBrowse(key="-INImage-", file_types=(("Image Files", "*.jpg")))] ]
 
 # ----------- Create actual layout using Columns and a row of Buttons
-layout = [  [sg.Text('Send via NTP')],
+winLayout = [  [sg.Text('Send via NTP')],
             [sg.Button('Message'), sg.Button('Text File'), sg.Button('Image File')],
             [sg.Column(layout1, key='-COL1-'), sg.Column(layout2, visible=False, key='-COL2-'), sg.Column(layout3, visible=False, key='-COL3-')],
+            [sg.Column(layoutSuccSent, key='-COLSuccSent-', visible=False)],
             [sg.Button('Send'), sg.Button('Exit')]    ]
 
-window = sg.Window('Send Data via NTP', layout, size=(500,150), element_justification='c')
+window = sg.Window('Send Data via NTP', winLayout, size=(500,250), element_justification='c')
 
 layout = 1  # The currently visible layout
 while True:
     event, values = window.read()
     # print(event, values)
     if event in (None, 'Exit'):
+        NTPClientSocket.close()
         break
     if event == "Send":
         if layout == 1:
@@ -129,17 +132,26 @@ while True:
             print(values["-IN3-"])
     if event == 'Message':
         layout = 1
+        window[f'-COLSuccSent-'].update(visible=False)
         window[f'-COL2-'].update(visible=False)
         window[f'-COL3-'].update(visible=False)
         window[f'-COL1-'].update(visible=True)  
-    elif event in 'Text File':
+    elif event == 'Text File':
         layout = 2
+        window[f'-COLSuccSent-'].update(visible=False)
         window[f'-COL1-'].update(visible=False)
         window[f'-COL3-'].update(visible=False)
         window[f'-COL2-'].update(visible=True)
-    elif event in 'Image File':
+    elif event == 'Image File':
         layout = 3
+        window[f'-COLSuccSent-'].update(visible=False)
         window[f'-COL1-'].update(visible=False)
         window[f'-COL2-'].update(visible=False)
         window[f'-COL3-'].update(visible=True)
+    if layout == 0:
+        window[f'-NTPText-'].update('Message Received: ' + ntpMessage)
+        window[f'-COLSuccSent-'].update(visible=True)
+        window[f'-COL1-'].update(visible=False)
+        window[f'-COL2-'].update(visible=False)
+        window[f'-COL3-'].update(visible=False)
 window.close()

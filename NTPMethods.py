@@ -1,7 +1,7 @@
-import string
 from scapy.all import *
 import datetime
 import numpy as np
+import docx
 
 # Package Struct
 # IP(version=4,ihl= None,tos= 0x0,len= None,id= 1,flags= ,frag= 0,ttl= 64,proto= "udp",chksum= None,src= "127.0.0.1",dst= "127.0.0.1"
@@ -119,6 +119,18 @@ def to_display(self):
             "Transmit: {0.transmit}\n"\
             "Transmit Date: {0.transmitDate}\n" \
             .format(self)
+
+def getTextFromDoc(fileName):
+    doc = docx.Document(fileName)
+    fullText = []
+    for para in doc.paragraphs:
+        fullText.append(para.text)
+    return '\n'.join(fullText)
+
+def getTextFromTxt(fileName):
+    with open(fileName) as f:
+            readFile = f.readlines()
+    return readFile[0]
 
 def extract_origin_timestamp(ntp_packet):
     encoded_origin_timestamp = ntp_packet[24:32]
