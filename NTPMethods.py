@@ -55,7 +55,7 @@ class NTPPacket:
 def get_fraction(number, precision):
     return int((number - int(number)) * 2 ** precision)
 
-def unpack(self, data: bytes, type):
+def unpack(self, data: bytes, type: int):
     unpacked_data = struct.unpack(NTPPacket._FORMAT, data)
     self.leap_indicator = unpacked_data[0] >> 6  # 2 bits
     self.version_number = unpacked_data[0] >> 3 & 0b111  # 3 bits
@@ -83,18 +83,32 @@ def unpack(self, data: bytes, type):
     self.transmit = unpacked_data[13] + unpacked_data[14] / 2 ** 32  # 8 bytes
     self.transmitDate = datetime.datetime.fromtimestamp(self.transmit) - timedelta(days=25567)
     # Gets the character of the message
+    # Server and ensures only ASCII letters
     if(type == 1):
         self.character = int(str(round(unpacked_data[8] / 2 ** 32, 6))[-3:])
-    else:
+        if(self.character > 128):
+            self.character = int(str(self.character)[1:] + "0")
+    # Client and ensures only ASCII letters
+    elif(type == 2):
         self.character = int(str(round(unpacked_data[12] / 2 ** 32, 6))[-3:])
-    if(self.character > 128):
-        self.character = int(str(self.character)[1:] + "0")
-    # print(self.character)
+        if(self.character > 128):
+            self.character = int(str(self.character)[1:] + "0")
+    # Gets Length of Server Message
+    elif(type == 3):
+        self.character = int(str(round(unpacked_data[8] / 2 ** 32, 6))[-3:])
+        print(self.character)
+    # Gets Length of Client Message
+    elif(type == 4):
+        self.character = int(str(round(unpacked_data[12] / 2 ** 32, 6))[-3:])
     return self
 
 def get_message(self):
     letter = chr(self.character)
     return letter
+
+def get_img_digit(self):
+    digit = self.character
+    return digit
 
 def get_message_length(self):
     length = self.character

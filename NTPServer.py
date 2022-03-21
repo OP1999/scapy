@@ -4,6 +4,7 @@ import socket
 import datetime
 import NTPMethods
 import PySimpleGUI as sg
+from PIL import Image
 
 localIP = "127.0.0.1"
 localPort = 20005
@@ -13,13 +14,14 @@ bufferSize = 1024
 # Create a UDP socket at Server side
 NTPServerSocket = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
 NTPServerSocket.bind((localIP, localPort))
-print("NTP Server up and Listening")
+print("NTP Server Up")
 
-# textToSend = "hello client"
 global ntpMode
 global ntpMessage
+global ntpArray
 
 ntpMessage = ""
+ntpArray = []
 
 def read_text_from_file(fileName):
     with open(fileName) as f:
@@ -40,8 +42,6 @@ def convert_text_to_ascii(text):
 
 def receive_client_packet():
     global ntpMode
-    global ntpMessage
-    ntpMessage = ""
     while(ntpMode == 1): 
         print("NTP Server Listening Active")
         bytesAddressPair = NTPServerSocket.recvfrom(bufferSize)
@@ -49,49 +49,120 @@ def receive_client_packet():
 
         answer = NTPMethods.NTPPacket()
         answer = NTPMethods.unpack(answer, message, 1)
-        messageLength = NTPMethods.get_message_length(answer)
-        print('Message Length: ' + str(messageLength))
+        arrayLength = NTPMethods.get_message_length(answer)
+
+        receive_text_packet(arrayLength)
         
-        # Runs for the length of the message it is receiving / sending
-        for i in range(messageLength):
-            bytesAddressPair = NTPServerSocket.recvfrom(bufferSize)
+        # receive_image_packet(arrayLength)
+        
+        # # Runs for the length of the message it is receiving / sending
+        # for i in range(messageLength):
+        #     bytesAddressPair = NTPServerSocket.recvfrom(bufferSize)
             
-            # Replies 'R' to show letter is received
-            recTimeWithMessage = float128(str(datetime.datetime.timestamp(datetime.datetime.utcnow()))[:-3] + "082") + NTPMethods.date_diff
+        #     # Replies 'R' to show letter is received
+        #     recTimeWithMessage = float128(str(datetime.datetime.timestamp(datetime.datetime.utcnow()))[:-3] + "082") + NTPMethods.date_diff
             
-            message = bytesAddressPair[0]
-            address = bytesAddressPair[1]
+        #     message = bytesAddressPair[0]
+        #     address = bytesAddressPair[1]
 
-            # clientIP = "Client IP Address:{}".format(address)   
-            # print(clientIP)
+        #     # clientIP = "Client IP Address:{}".format(address)   
+        #     # print(clientIP)
 
-            answer = NTPMethods.NTPPacket()
-            answer = NTPMethods.unpack(answer, message, 1)
-            ntpResponse = NTPMethods.to_display(answer)
-            character = NTPMethods.get_message(answer)
+        #     answer = NTPMethods.NTPPacket()
+        #     answer = NTPMethods.unpack(answer, message, 1)
+        #     ntpResponse = NTPMethods.to_display(answer)
+        #     character = NTPMethods.get_message(answer)
             
-            # Reply Custom Message
-            # try:
-            #     if(ascii_values[i] < 100):
-            #         recTimeWithMessage = float128(str(datetime.datetime.timestamp(datetime.datetime.utcnow()))[:-3] + "0" + str(ascii_values[i])) + NTPMethods.date_diff
-            #     else :
-            #         recTimeWithMessage = float128(str(datetime.datetime.timestamp(datetime.datetime.utcnow()))[:-3] + str(ascii_values[i])) + NTPMethods.date_diff
-            # except:
-            #     recTimeWithMessage = float128(str(datetime.datetime.timestamp(datetime.datetime.utcnow()))[:-3] + "032") + NTPMethods.date_diff
+        #     # Reply Custom Message
+        #     # try:
+        #     #     if(ascii_values[i] < 100):
+        #     #         recTimeWithMessage = float128(str(datetime.datetime.timestamp(datetime.datetime.utcnow()))[:-3] + "0" + str(ascii_values[i])) + NTPMethods.date_diff
+        #     #     else :
+        #     #         recTimeWithMessage = float128(str(datetime.datetime.timestamp(datetime.datetime.utcnow()))[:-3] + str(ascii_values[i])) + NTPMethods.date_diff
+        #     # except:
+        #     #     recTimeWithMessage = float128(str(datetime.datetime.timestamp(datetime.datetime.utcnow()))[:-3] + "032") + NTPMethods.date_diff
                 
-            returnPacket = IP(dst=address[0])/UDP(sport=localPort,dport=address[1])/NTP(version=4, mode='server', recv=recTimeWithMessage)
-            send(returnPacket)
+        #     returnPacket = IP(dst=address[0])/UDP(sport=localPort,dport=address[1])/NTP(version=4, mode='server', recv=recTimeWithMessage)
+        #     send(returnPacket)
 
-            print(ntpResponse)
+        #     print(ntpResponse)
 
-            ntpMessage += character
+        #     ntpMessage += character
         
-        if(len(ntpMessage) == messageLength):
-            # Writes NTP Message to a text file and displays a pop up with the message
-            with open("NTPServerMessage.txt", "w") as text_file:
-                print(f"{ntpMessage}", file=text_file)
+        # if(len(ntpMessage) == messageLength):
+        #     # Writes NTP Message to a text file and displays a pop up with the message
+        #     with open("NTPServerMessage.txt", "w") as text_file:
+        #         print(f"{ntpMessage}", file=text_file)
         
         ntpMode = 0 
+
+def receive_text_packet(messageLength):
+    global ntpMessage
+    ntpMessage = ""
+    # Runs for the length of the message it is receiving / sending
+    for i in range(messageLength):
+        bytesAddressPair = NTPServerSocket.recvfrom(bufferSize)
+        
+        # Replies 'R' to show letter is received
+        recTimeWithMessage = float128(str(datetime.datetime.timestamp(datetime.datetime.utcnow()))[:-3] + "082") + NTPMethods.date_diff
+        
+        message = bytesAddressPair[0]
+        address = bytesAddressPair[1]
+
+        # clientIP = "Client IP Address:{}".format(address)   
+        # print(clientIP)
+
+        answer = NTPMethods.NTPPacket()
+        answer = NTPMethods.unpack(answer, message, 1)
+        ntpResponse = NTPMethods.to_display(answer)
+        character = NTPMethods.get_message(answer)
+           
+        returnPacket = IP(dst=address[0])/UDP(sport=localPort,dport=address[1])/NTP(version=4, mode='server', recv=recTimeWithMessage)
+        send(returnPacket)
+
+        print(ntpResponse)
+
+        ntpMessage += character
+    
+    if(len(ntpMessage) == messageLength):
+        # Writes NTP Message to a text file and displays a pop up with the message
+        with open("NTPServerMessage.txt", "w") as text_file:
+            print(f"{ntpMessage}", file=text_file)
+
+def receive_image_packet(imageLength):
+    global ntpArray
+    ntpArray = []
+    # Runs for the length of the message it is receiving / sending
+    for i in range(imageLength):
+        bytesAddressPair = NTPServerSocket.recvfrom(bufferSize)
+        
+        # Replies 'R' to show letter is received
+        recTimeWithMessage = float128(str(datetime.datetime.timestamp(datetime.datetime.utcnow()))[:-3] + "082") + NTPMethods.date_diff
+        
+        message = bytesAddressPair[0]
+        address = bytesAddressPair[1]
+
+        answer = NTPMethods.NTPPacket()
+        answer = NTPMethods.unpack(answer, message, 3)
+        ntpResponse = NTPMethods.to_display(answer)
+        character = NTPMethods.get_img_digit(answer)
+           
+        returnPacket = IP(dst=address[0])/UDP(sport=localPort,dport=address[1])/NTP(version=4, mode='server', recv=recTimeWithMessage)
+        send(returnPacket)
+
+        # print(ntpResponse)
+
+        ntpArray.append(character)
+    
+    if(len(ntpArray) == imageLength):
+        # Writes NTP Message to a png file and displays a pop up with the image
+        image = Image.open(io.BytesIO(ntpArray))
+        image.save("NTPServerImg.png")
+        image.show()
+
+def receive_zip_packet():
+    print('zip')
+
 
 # ----------- Create the 5 layouts this Window will display -----------
 layoutReceive = [   [sg.Text("Server in NTP Receive Mode")]     ]
@@ -139,6 +210,7 @@ while True:
         window[f'-COL1-'].update(visible=False)
         window.refresh()
         receive_client_packet() 
+        window.refresh()
     elif event == 'Send Mode':
         ntpMode = 2
         window[f'-COLReceive-'].update(visible=False)
