@@ -95,8 +95,12 @@ def unpack(self, data: bytes, type: int):
             self.character = int(str(self.character)[1:] + "0")
     # Gets Length of Server Message
     elif(type == 3):
-        self.character = int(str(round(unpacked_data[8] / 2 ** 32, 6))[-3:])
-        print(self.character)
+        try:
+            self.character = int(str(round(unpacked_data[8] / 2 ** 32, 6))[-3:])
+            if(self.character > 255):
+                self.character = int(str(self.character)[1:] + "0")
+        except:
+            self.character = 0
     # Gets Length of Client Message
     elif(type == 4):
         self.character = int(str(round(unpacked_data[12] / 2 ** 32, 6))[-3:])
@@ -109,6 +113,10 @@ def get_message(self):
 def get_img_digit(self):
     digit = self.character
     return digit
+
+def get_message_type(self):
+    length = self.character
+    return length
 
 def get_message_length(self):
     length = self.character

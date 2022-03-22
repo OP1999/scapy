@@ -3,9 +3,13 @@ from PIL import Image
 
 with open("NTPImage.png", "rb") as image:
     readImage = image.read()
-    imageByte = bytearray(readImage)
-    print(imageByte[1]) 
+    # print(readImage)
+    # print(len(readImage))  
+    
+    # The Same
+    # imageByte = bytearray(readImage)
+    # print(imageByte) 
     # print(len(imageByte))  
  
-    image = Image.open(io.BytesIO(imageByte))
-    # image.show()
+    image = Image.open(io.BytesIO(readImage))
+    image.show()
