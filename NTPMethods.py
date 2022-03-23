@@ -83,27 +83,16 @@ def unpack(self, data: bytes, type: int):
     self.transmit = unpacked_data[13] + unpacked_data[14] / 2 ** 32  # 8 bytes
     self.transmitDate = datetime.datetime.fromtimestamp(self.transmit) - timedelta(days=25567)
     # Gets the character of the message
-    # Server and ensures only ASCII letters
+    # Server and takes last three digits
     if(type == 1):
-        self.character = int(str(round(unpacked_data[8] / 2 ** 32, 6))[-3:])
-        if(self.character > 128):
-            self.character = int(str(self.character)[1:] + "0")
-    # Client and ensures only ASCII letters
+        # print(str(unpacked_data[8] / 2 ** 32)[:10])
+        self.character = int((f"{str(round(unpacked_data[8] / 2 ** 32, 6))[:8]:0<8}")[-3:])
+        # print(self.character)
+    # Client and takes last three digits
     elif(type == 2):
-        self.character = int(str(round(unpacked_data[12] / 2 ** 32, 6))[-3:])
-        if(self.character > 128):
-            self.character = int(str(self.character)[1:] + "0")
-    # Gets Length of Server Message
-    elif(type == 3):
-        try:
-            self.character = int(str(round(unpacked_data[8] / 2 ** 32, 6))[-3:])
-            if(self.character > 255):
-                self.character = int(str(self.character)[1:] + "0")
-        except:
-            self.character = 0
-    # Gets Length of Client Message
-    elif(type == 4):
-        self.character = int(str(round(unpacked_data[12] / 2 ** 32, 6))[-3:])
+        # print(str(unpacked_data[12] / 2 ** 32)[:10])
+        self.character = int((f"{str(round(unpacked_data[12] / 2 ** 32, 6))[:8]:0<8}")[-3:])
+        # print(self.character)
     return self
 
 def get_message(self):

@@ -72,14 +72,14 @@ def receive_text_packet(messageLength):
 
         answer = NTPMethods.NTPPacket()
         answer = NTPMethods.unpack(answer, message, 1)
-        ntpResponse = NTPMethods.to_display(answer)
+        # ntpResponse = NTPMethods.to_display(answer)
         character = NTPMethods.get_message(answer)
            
         returnPacket = IP(dst=address[0])/UDP(sport=localPort,dport=address[1])/NTP(version=4, mode='server', recv=recTimeWithMessage)
         send(returnPacket)
 
-        print(ntpResponse)
-
+        # print(ntpResponse)
+        print(character)
         ntpMessage += character
     
     if(len(ntpMessage) == messageLength):
@@ -99,10 +99,12 @@ def receive_image_packet(imageLength):
         address = bytesAddressPair[1]
 
         answer = NTPMethods.NTPPacket()
-        answer = NTPMethods.unpack(answer, message, 3)
+        answer = NTPMethods.unpack(answer, message, 1)
         # ntpResponse = NTPMethods.to_display(answer)
         character = NTPMethods.get_img_digit(answer)
         # print(ntpResponse)
+        if(character>256):
+            print(character)
 
         ntpArray.append(character)
     
@@ -199,11 +201,11 @@ while True:
             window[f'-COL1-'].update(visible=False)
             window[f'-COL2-'].update(visible=False)
             window[f'-COL3-'].update(visible=True)
-    if event == "Send":
-        if layout == 1:
-            convert_text_to_ascii(values["-IN1-"])
-        elif layout == 2:
-            read_text_from_file(values["-IN2-"])
-        elif layout == 3:
-            read_image_from_file(values["-IN3-"])
+    # if event == "Send":
+        # if layout == 1:
+        #     convert_text_to_ascii(values["-IN1-"])
+        # elif layout == 2:
+        #     read_text_from_file(values["-IN2-"])
+        # elif layout == 3:
+        #     read_image_from_file(values["-IN3-"])
 window.close()

@@ -24,11 +24,11 @@ def read_text_from_file(fileName):
     global layout
     if(os.path.splitext(fileName)[1] == '.docx'):
         textToSend = NTPMethods.getTextFromDoc(fileName)
-        send_message_type('1')
+        send_packet(get_message_value(1))
         convert_text_to_ascii(textToSend)    
     elif(os.path.splitext(fileName)[1] == '.txt'):
         textToSend = NTPMethods.getTextFromTxt(fileName)
-        send_message_type('1')
+        send_packet(get_message_value(1))
         convert_text_to_ascii(textToSend)
     else:
         layout = 4
@@ -38,75 +38,58 @@ def read_image_from_file(fileName):
     if(os.path.splitext(fileName)[1] == '.png'):
         with open(fileName, "rb") as image:
             image_values = image.read()
-            send_message_type('2')
-            send_message_length(len(image_values))
+            send_packet(get_message_value(2))
+            send_packet(get_message_value(len(image_values)))
             send_image_packet(image_values)
     elif(os.path.splitext(fileName)[1] == '.jpg'):
         with open(fileName, "rb") as image:
             image_values = image.read()
-            send_message_type('2')
-            send_message_length(len(image_values))
+            send_packet(get_message_value(2))
+            send_packet(get_message_value(len(image_values)))
             send_image_packet(image_values)
     else:
         layout = 4
 
 def convert_text_to_ascii(textToSend):
     ascii_values = [ord(character) for character in textToSend]
-    send_message_length(len(ascii_values))
-    send_client_packet(ascii_values)
+    send_packet(get_message_value(len(ascii_values)))
+    send_text_packet(ascii_values)
 
-def send_message_type(fileType):
-    # Sends a packet with the type of file type of the message - 1, 2 or 3
-    refTimeWithTypeOffset = float128(str(datetime.datetime.timestamp(datetime.datetime.utcnow()))[:-3] + "00" + fileType) + NTPMethods.date_diff
-
-    print(refTimeWithTypeOffset)
-    send_packet_length_type_offset(refTimeWithTypeOffset)
-
-def send_message_length(length):
-    # Sends a packet with the length of the message
-    if(length < 10):
-        refTimeWithLengthOffset = float128(str(datetime.datetime.timestamp(datetime.datetime.utcnow()))[:-3] + "00" + str(length)) + NTPMethods.date_diff
-    elif(length >=  10 and length < 100):
-        refTimeWithLengthOffset = float128(str(datetime.datetime.timestamp(datetime.datetime.utcnow()))[:-3] + "0" + str(length)) + NTPMethods.date_diff
+def get_message_value(value):
+    # Formats Current Time to Set string value
+    currentTime = f"{str(datetime.datetime.timestamp(datetime.datetime.utcnow()) + NTPMethods.date_diff)[:17]:0<17}"
+    if(value < 10):
+        refTimeWithValue = float128(currentTime[:-3] + "00" + str(value)) 
+    elif(value >=  10 and value < 100):
+        refTimeWithValue = float128(currentTime[:-3] + "0" + str(value)) 
     else:
-        refTimeWithLengthOffset = float128(str(datetime.datetime.timestamp(datetime.datetime.utcnow()))[:-len(str(length))] + str(length)) + NTPMethods.date_diff
+        refTimeWithValue = float128(currentTime[:-3] + str(value)) 
+    print(refTimeWithValue)
 
-    print(refTimeWithLengthOffset)
-    send_packet_length_type_offset(refTimeWithLengthOffset)
+    return refTimeWithValue
 
-def send_packet_length_type_offset(refTimeWithOffset):
-    initialPacket = IP(dst=localIP)/UDP(sport=localPort, dport=destinationPort)/NTP(version=4, mode='client', ref=refTimeWithOffset)
-    # initialPacket = IP(dst=localIP)/UDP(sport=localPort)/NTP(version=4, mode='client', ref=refTimeWithOffset)
-    send(initialPacket)
+def send_packet(refTimeWithOffset):
+    packet = IP(dst=localIP)/UDP(sport=localPort, dport=destinationPort)/NTP(version=4, mode='client', ref=refTimeWithOffset)
+    send(packet)
 
-def send_client_packet(int_values):
+def send_text_packet(int_values):
     global layout
     global ntpMessage
     ntpMessage = ""
     # Runs for the length of the message it is sending
     for i in range(len(int_values)):
-        if(int_values[i] < 10):
-            refTimeWithMessage = float128(str(datetime.datetime.timestamp(datetime.datetime.utcnow()))[:-3] + "00" + str(int_values[i])) + NTPMethods.date_diff
-        elif(int_values[i] >=  10 and int_values[i] < 100):
-            refTimeWithMessage = float128(str(datetime.datetime.timestamp(datetime.datetime.utcnow()))[:-3] + "0" + str(int_values[i])) + NTPMethods.date_diff
-        else:
-            # refTimeWithMessage = float128(str(datetime.datetime.timestamp(datetime.datetime.utcnow()))[:-(len(str(int_values[i])))] + str(int_values[i])) + NTPMethods.date_diff
-            refTimeWithMessage = float128(str(datetime.datetime.timestamp(datetime.datetime.utcnow()))[:-3] + str(int_values[i])) + NTPMethods.date_diff
-
-        clientPacket = IP(dst=localIP)/UDP(sport=localPort, dport=destinationPort)/NTP(version=4, mode='client', ref=refTimeWithMessage)
-        # clientPacket = IP(dst=localIP)/UDP(sport=localPort)/NTP(version=4, mode='client', ref=refTimeWithMessage)
-        send(clientPacket)
+        send_packet(get_message_value(int_values[i]))
 
         bytesAddressPair = NTPClientSocket.recvfrom(bufferSize)
         message = bytesAddressPair[0]
-        address = bytesAddressPair[1]
-
+        
+        # address = bytesAddressPair[1]
         # serverIP = "Server IP Address:{}".format(address)
         # print(serverIP)
 
         answer = NTPMethods.NTPPacket()
         answer = NTPMethods.unpack(answer, message, 2)
-        ntpResponse = NTPMethods.to_display(answer)
+        # ntpResponse = NTPMethods.to_display(answer)
         character = NTPMethods.get_message(answer)
 
         # print(ntpResponse)
@@ -130,17 +113,7 @@ def send_image_packet(int_values):
     ntpMessage = ""
     # Runs for the length of the message it is sending
     for i in range(len(int_values)):
-        if(int_values[i] < 10):
-            refTimeWithMessage = float128(str(datetime.datetime.timestamp(datetime.datetime.utcnow()))[:-3] + "00" + str(int_values[i])) + NTPMethods.date_diff
-        elif(int_values[i] >=  10 and int_values[i] < 100):
-            refTimeWithMessage = float128(str(datetime.datetime.timestamp(datetime.datetime.utcnow()))[:-3] + "0" + str(int_values[i])) + NTPMethods.date_diff
-        else:
-            # refTimeWithMessage = float128(str(datetime.datetime.timestamp(datetime.datetime.utcnow()))[:-(len(str(int_values[i])))] + str(int_values[i])) + NTPMethods.date_diff
-            refTimeWithMessage = float128(str(datetime.datetime.timestamp(datetime.datetime.utcnow()))[:-3] + str(int_values[i])) + NTPMethods.date_diff
-
-        clientPacket = IP(dst=localIP)/UDP(sport=localPort, dport=destinationPort)/NTP(version=4, mode='client', ref=refTimeWithMessage)
-        # clientPacket = IP(dst=localIP)/UDP(sport=localPort)/NTP(version=4, mode='client', ref=refTimeWithMessage)
-        send(clientPacket)
+        send_packet(get_message_value(int_values[i]))
 
     layout = 0
 
@@ -175,7 +148,7 @@ while True:
         break
     if event == "-BTNSend-":
         if layout == 1:
-            send_message_type('1')
+            send_packet(get_message_value(1))
             convert_text_to_ascii(values["-IN1-"])
         if layout == 2:
             read_text_from_file(values["-IN2-"])
