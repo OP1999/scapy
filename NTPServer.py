@@ -10,6 +10,7 @@ from PIL import Image
 
 localIP = "127.0.0.1"
 localPort = 20005
+destinationIP = "127.0.0.1"
 destinationPort = 50005
 bufferSize = 1024
 
@@ -25,16 +26,20 @@ global ntpArray
 ntpMessage = ""
 ntpArray = []
 
+def get_ntp_packet(type):
+    bytesAddressPair = NTPServerSocket.recvfrom(bufferSize)
+    message = bytesAddressPair[0]
+
+    answer = NTPMethods.NTPPacket()
+    answer = NTPMethods.unpack(answer, message, type)
+
+    return answer
+
 def receive_client_packet():
     global ntpMode
     while(ntpMode == 1): 
         print("NTP Server Listening Active")
-        bytesAddressPair = NTPServerSocket.recvfrom(bufferSize)
-        message = bytesAddressPair[0]
-
-        answer = NTPMethods.NTPPacket()
-        answer = NTPMethods.unpack(answer, message, 1)
-        print(NTPMethods.get_message(answer))
+        answer = get_ntp_packet(1)
         messageType = NTPMethods.get_message_type(answer)
 
         get_message_len(messageType)
@@ -42,13 +47,8 @@ def receive_client_packet():
         ntpMode = 0 
 
 def get_message_len(type):
-    bytesAddressPair = NTPServerSocket.recvfrom(bufferSize)
-    message = bytesAddressPair[0]
-
-    answer = NTPMethods.NTPPacket()
-    answer = NTPMethods.unpack(answer, message, 4)
+    answer = get_ntp_packet(4)
     arrayLength = NTPMethods.get_message_length(answer)
-    print(arrayLength)
 
     if(type == 1):
         receive_text_packet(arrayLength)
@@ -62,23 +62,23 @@ def receive_text_packet(messageLength):
     ntpMessage = ""
     # Runs for the length of the message it is receiving
     for i in range(messageLength):
-        bytesAddressPair = NTPServerSocket.recvfrom(bufferSize)
-        
+        # message = bytesAddressPair[0]
+        # address = bytesAddressPair[1]
+
+        # # clientIP = "Client IP Address:{}".format(address)   
+        # # print(clientIP)
+
+
+        answer = get_ntp_packet(1)
+        # ntpResponse = NTPMethods.to_display(answer)
+        character = NTPMethods.get_message_char(answer)
+
         # Replies 'R' to show letter is received
         recTimeWithMessage = float128(str(datetime.datetime.timestamp(datetime.datetime.utcnow()))[:-3] + "082") + NTPMethods.date_diff
         
-        message = bytesAddressPair[0]
-        address = bytesAddressPair[1]
-
-        # clientIP = "Client IP Address:{}".format(address)   
-        # print(clientIP)
-
-        answer = NTPMethods.NTPPacket()
-        answer = NTPMethods.unpack(answer, message, 1)
-        # ntpResponse = NTPMethods.to_display(answer)
-        character = NTPMethods.get_message(answer)
            
-        returnPacket = IP(dst=address[0])/UDP(sport=localPort,dport=address[1])/NTP(version=4, mode='server', recv=recTimeWithMessage)
+        # returnPacket = IP(dst=address[0])/UDP(sport=localPort,dport=address[1])/NTP(version=4, mode='server', recv=recTimeWithMessage)
+        returnPacket = IP(dst=destinationIP)/UDP(sport=localPort,dport=destinationPort)/NTP(version=4, mode='server', recv=recTimeWithMessage)
         send(returnPacket)
 
         # print(ntpResponse)
@@ -96,12 +96,7 @@ def receive_byte_packet(byteLength, type):
     ntpMessage = ""
     # Runs for the length of the message it is receiving
     for i in range(byteLength):
-        bytesAddressPair = NTPServerSocket.recvfrom(bufferSize)
-        
-        message = bytesAddressPair[0]
-
-        answer = NTPMethods.NTPPacket()
-        answer = NTPMethods.unpack(answer, message, 1)
+        answer = get_ntp_packet(1)
         # ntpResponse = NTPMethods.to_display(answer)
         character = NTPMethods.get_byte_digit(answer)
         # print(ntpResponse)

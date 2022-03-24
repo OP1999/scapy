@@ -83,10 +83,10 @@ def unpack(self, data: bytes, type: int):
     self.transmit = unpacked_data[13] + unpacked_data[14] / 2 ** 32  # 8 bytes
     self.transmitDate = datetime.datetime.fromtimestamp(self.transmit) - timedelta(days=25567)
     # Gets the character of the message
-    # Server and takes last three digits
+    # Server Response from Ref and takes last three digits
     if(type == 1):
         self.character = int((f"{str(round(unpacked_data[8] / 2 ** 32, 6))[:8]:0<8}")[-3:])
-    # Client and takes last three digits
+    # Client Response from Ori and takes last three digits
     elif(type == 2):
         self.character = int((f"{str(round(unpacked_data[12] / 2 ** 32, 6))[:8]:0<8}")[-3:])
     # Message Length
@@ -95,7 +95,7 @@ def unpack(self, data: bytes, type: int):
 
     return self
 
-def get_message(self):
+def get_message_char(self):
     letter = chr(self.character)
     return letter
 
@@ -142,34 +142,3 @@ def getTextFromTxt(fileName):
     with open(fileName) as f:
             readFile = f.readlines()
     return readFile[0]
-
-def extract_origin_timestamp(ntp_packet):
-    encoded_origin_timestamp = ntp_packet[24:32]
-
-    seconds, fraction = struct.unpack("!II", encoded_origin_timestamp)
-    offset = datetime.timedelta(seconds=seconds + fraction / 2**32)
-    return base_time + offset
-
-def extract_transmit_timestamp(ntp_packet):
-    encoded_transmit_timestamp = ntp_packet[40:48]
-
-    seconds, fraction = struct.unpack("!II", encoded_transmit_timestamp)
-    offset = datetime.timedelta(seconds=seconds + fraction / 2**32)
-    return base_time + offset
-
-def extract_receive_timestamp(ntp_packet):
-    encoded_receive_timestamp = ntp_packet[32:40]
-
-    seconds, fraction = struct.unpack("!II", encoded_receive_timestamp)
-    offset = datetime.timedelta(seconds=seconds + fraction / 2**32)
-    return base_time + offset
-
-# origin_timestamp = NTPMethods.extract_origin_timestamp(message)
-# print("Origin clock read (in UTC):", origin_timestamp)
-# transmit_timestamp = NTPMethods.extract_transmit_timestamp(message)
-# print("Transmit clock read (in UTC):", transmit_timestamp)
-
-# Sending a reply to client
-# NTPServerSocket.sendto(ntpBytesToSend, address)
-
-# send(IP(dst='127.0.0.1')/UDP(sport=50005,dport=20005)/NTP(version=4))

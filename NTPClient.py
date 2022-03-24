@@ -8,6 +8,7 @@ import os.path
 
 localIP = "127.0.0.1"
 localPort = 50005
+destinationIP = "127.0.0.1"
 destinationPort = 20005
 bufferSize = 1024
 
@@ -107,7 +108,7 @@ def send_text_packet(int_values):
         answer = NTPMethods.NTPPacket()
         answer = NTPMethods.unpack(answer, message, 2)
         # ntpResponse = NTPMethods.to_display(answer)
-        character = NTPMethods.get_message(answer)
+        character = NTPMethods.get_message_char(answer)
 
         # print(ntpResponse)
         
