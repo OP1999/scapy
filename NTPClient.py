@@ -135,30 +135,40 @@ def send_byte_packet(int_values):
 
     layout = 0
 
-# ----------- Create the 4 layouts this Window will display -----------
-layoutSuccSent = [  [sg.Text(key="-ErrorMess-")],
-                    [sg.Text(key="-NTPText-")]    ]
+# ----------- Create the layouts this Window will display -----------
+layoutReceive = [   [sg.Text("Server in NTP Receive Mode")]     ]
 
-layout1 = [ [sg.Text("Input the message you would like to send to the server")],
+layoutSuccReceive = [   [sg.Text("Server successfully Received a Response")],
+                        [sg.Text(key="-NTPRecText-")]    ]
+                    
+layoutSuccSent = [  [sg.Text(key="-ErrorMess-")],
+                    [sg.Text(key="-NTPSentText-")]    ]
+
+layoutButton = [    [sg.Button('Message'), sg.Button('Text File'), sg.Button('Image File'), sg.Button('Zip File')]    ]
+
+layoutMes = [ [sg.Text("Input the message you would like to send to the server")],
             [sg.Input(key="-INMes-")]    ]
 
-layout2 = [ [sg.Text('Send Text File via NTP')],
+layoutTxt = [ [sg.Text('Send Text File via NTP')],
             [sg.Text("Choose a file: "), sg.Input(key="-INTxt-", change_submits=True), sg.FileBrowse(key="-INFBTxt-", file_types=(("Text Files", "*.txt")))] ]
             
-layout3 = [ [sg.Text('Send Image via NTP')],
+layoutImg = [ [sg.Text('Send Image via NTP')],
             [sg.Text("Choose a file: "), sg.Input(key="-INImg-", change_submits=True), sg.FileBrowse(key="-INFBImage-", file_types=(("Image Files", "*.jpg")))] ]
 
-layout4 = [ [sg.Text('Send Zip via NTP')],
+layoutZip = [ [sg.Text('Send Zip via NTP')],
             [sg.Text("Choose a file: "), sg.Input(key="-INZip-", change_submits=True), sg.FileBrowse(key="-INFBZip-", file_types=(("Zip Files", "*.zip")))] ]
 
 # ----------- Create actual layout using Columns and a row of Buttons
-winLayout = [  [sg.Text('Send via NTP')],
-            [sg.Button('Message'), sg.Button('Text File'), sg.Button('Image File'), sg.Button('Zip File')],
-            [sg.Column(layout1, key='-COL1-'), sg.Column(layout2, visible=False, key='-COL2-'), sg.Column(layout3, visible=False, key='-COL3-'), sg.Column(layout4, visible=False, key='-COL4-')],
+winLayout = [   [sg.Text('Client')],
+            [sg.Button('Receive Mode'), sg.Button('Send Mode')],
+            [sg.Column(layoutReceive, key='-COLReceive-', visible=False)],
+            [sg.Column(layoutButton, key='-COLBtn-', visible=False)],
+            [sg.Column(layoutSuccReceive, key='-COLSuccReceive-', visible=False)],
+            [sg.Column(layoutMes, visible=False, key='-COLMes-'), sg.Column(layoutTxt, visible=False, key='-COLTxt-'), sg.Column(layoutImg, visible=False, key='-COLImg-'), sg.Column(layoutZip, visible=False, key='-COLZip-')],
             [sg.Column(layoutSuccSent, key='-COLSuccSent-', visible=False)],
-            [sg.Button('Send', key='-BTNSend-'), sg.Button('Exit', key='-BTNExit-')]    ]
-
-window = sg.Window('Send Data via NTP', winLayout, size=(500,250), element_justification='c')
+            [sg.Button('Send', key='-BTNSend-', visible=False)], 
+            [sg.Button('Exit', key='-BTNExit-')]    ]
+window = sg.Window('Send / Receive Data via NTP', winLayout, size=(500,300), element_justification='c')
 
 layout = 1  # The currently visible layout
 while True:
@@ -177,54 +187,80 @@ while True:
             read_image_from_file(values["-INImg-"])
         if layout == 4:
             read_zip_from_file(values["-INZip-"])
-    if event == 'Message':
-        layout = 1
-        window[f'-COLSuccSent-'].update(visible=False)
-        window[f'-COL2-'].update(visible=False)
-        window[f'-COL3-'].update(visible=False)
-        window[f'-COL4-'].update(visible=False)
-        window[f'-BTNSend-'].update(visible=True)
-        window[f'-COL1-'].update(visible=True)  
-    elif event == 'Text File':
-        layout = 2
-        window[f'-COLSuccSent-'].update(visible=False)
-        window[f'-COL1-'].update(visible=False)
-        window[f'-COL3-'].update(visible=False)
-        window[f'-COL4-'].update(visible=False)
-        window[f'-BTNSend-'].update(visible=True)
-        window[f'-COL2-'].update(visible=True)
-    elif event == 'Image File':
-        layout = 3
-        window[f'-COLSuccSent-'].update(visible=False)
-        window[f'-COL1-'].update(visible=False)
-        window[f'-COL2-'].update(visible=False)
-        window[f'-COL4-'].update(visible=False)
-        window[f'-BTNSend-'].update(visible=True)
-        window[f'-COL3-'].update(visible=True)
-    elif event == 'Zip File':
-        layout = 4
-        window[f'-COLSuccSent-'].update(visible=False)
-        window[f'-COL1-'].update(visible=False)
-        window[f'-COL2-'].update(visible=False)
-        window[f'-COL3-'].update(visible=False)
-        window[f'-BTNSend-'].update(visible=True)
-        window[f'-COL4-'].update(visible=True)
-    if layout == 0:
-        window[f'-ErrorMess-'].update("Client successfully Sent a Message")
-        window[f'-NTPText-'].update('Message Received: ' + ntpMessage)
-        window[f'-COLSuccSent-'].update(visible=True)
-        window[f'-BTNSend-'].update(visible=False)
-        window[f'-COL1-'].update(visible=False)
-        window[f'-COL2-'].update(visible=False)
-        window[f'-COL3-'].update(visible=False)
-        window[f'-COL4-'].update(visible=False)
-    if layout == 5:
-        window[f'-ErrorMess-'].update("Unsuccessful Sending File")
-        window[f'-NTPText-'].update('Wrong File Type - Please choose again')
-        window[f'-COLSuccSent-'].update(visible=True)
-        window[f'-BTNSend-'].update(visible=False)
-        window[f'-COL1-'].update(visible=False)
-        window[f'-COL2-'].update(visible=False)
-        window[f'-COL3-'].update(visible=False)
-        window[f'-COL4-'].update(visible=False)
-window.close()
+    if event == 'Receive Mode':
+        print('Receive')
+        ntpMode = 1
+        window[f'-COLBtn-'].update(visible=False) 
+        window[f'-COLSuccReceive-'].update(visible=False)
+        window[f'-COLMes-'].update(visible=False)
+        window[f'-COLTxt-'].update(visible=False)  
+        window[f'-COLImg-'].update(visible=False)
+        window[f'-COLZip-'].update(visible=False) 
+        window[f'-COLSuccSent-'].update(visible=False) 
+        window[f'-BTNSend-'].update(visible=False) 
+        window[f'-COLReceive-'].update(visible=True)        
+        window.refresh()
+        # receive_client_packet() 
+        window.refresh()
+    elif event == 'Send Mode':
+        print('Send')
+        ntpMode = 2
+        window[f'-COLSuccReceive-'].update(visible=False)
+        window[f'-COLTxt-'].update(visible=False)  
+        window[f'-COLImg-'].update(visible=False)
+        window[f'-COLZip-'].update(visible=False) 
+        window[f'-COLSuccSent-'].update(visible=False) 
+        window[f'-COLReceive-'].update(visible=False)  
+        window[f'-COLBtn-'].update(visible=True) 
+        window[f'-COLMes-'].update(visible=True) 
+        window[f'-BTNSend-'].update(visible=True)    
+        window.refresh()
+    if ntpMode == 0:
+        window[f'-NTPRecText-'].update('Message Received: ' + ntpMessage)
+        window[f'-COLReceive-'].update(visible=False)
+        window[f'-COLSuccReceive-'].update(visible=True)
+        window.bring_to_front()
+    elif ntpMode == 2:
+        if event == 'Message':
+            layout = 1
+            window[f'-COLTxt-'].update(visible=False)
+            window[f'-COLImg-'].update(visible=False)
+            window[f'-COLZip-'].update(visible=False)
+            window[f'-COLMes-'].update(visible=True)  
+        elif event in 'Text File':
+            layout = 2
+            window[f'-COLMes-'].update(visible=False)
+            window[f'-COLImg-'].update(visible=False)
+            window[f'-COLZip-'].update(visible=False)
+            window[f'-COLTxt-'].update(visible=True)
+        elif event in 'Image File':
+            layout = 3
+            window[f'-COLMes-'].update(visible=False)
+            window[f'-COLTxt-'].update(visible=False)
+            window[f'-COLZip-'].update(visible=False)
+            window[f'-COLImg-'].update(visible=True)
+        elif event in 'Zip File':
+            layout = 4
+            window[f'-COLMes-'].update(visible=False)
+            window[f'-COLTxt-'].update(visible=False)
+            window[f'-COLImg-'].update(visible=False)
+            window[f'-COLZip-'].update(visible=True)
+    elif ntpMode == 3:    
+        if layout == 5:
+            window[f'-ErrorMess-'].update("Client successfully Sent a Message")
+            window[f'-NTPSuccText-'].update('Message Received: ' + ntpMessage)
+            window[f'-COLSuccSent-'].update(visible=True)
+            window[f'-BTNSend-'].update(visible=False)
+            window[f'-COL1-'].update(visible=False)
+            window[f'-COL2-'].update(visible=False)
+            window[f'-COL3-'].update(visible=False)
+            window[f'-COL4-'].update(visible=False)
+        elif layout == 6:
+            window[f'-ErrorMess-'].update("Unsuccessful Sending File")
+            window[f'-NTPRecText-'].update('Wrong File Type - Please choose again')
+            window[f'-COLSuccSent-'].update(visible=True)
+            window[f'-BTNSend-'].update(visible=False)
+            window[f'-COL1-'].update(visible=False)
+            window[f'-COL2-'].update(visible=False)
+            window[f'-COL3-'].update(visible=False)
+            window[f'-COL4-'].update(visible=False)
