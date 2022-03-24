@@ -4,6 +4,7 @@ import socket
 import datetime
 import NTPMethods
 import PySimpleGUI as sg
+import io
 from PIL import Image
 
 localIP = "127.0.0.1"
@@ -91,7 +92,8 @@ def receive_image_packet(imageLength):
     global ntpArray
     ntpArray = []
     # Runs for the length of the message it is receiving
-    for i in range(38024):
+    for i in range(1523):
+    # for i in range(38024):
     # for i in range(imageLength):
         bytesAddressPair = NTPServerSocket.recvfrom(bufferSize)
         
@@ -103,17 +105,19 @@ def receive_image_packet(imageLength):
         # ntpResponse = NTPMethods.to_display(answer)
         character = NTPMethods.get_img_digit(answer)
         # print(ntpResponse)
-        if(character>256):
-            print(character)
 
         ntpArray.append(character)
     
     # if(len(ntpArray) == imageLength):
     # Writes NTP Message to a png file and displays a pop up with the image
-    print(ntpArray)
+
     byteArray = bytearray(ntpArray)
+
+    # with open("NTPImageServerByteArray.txt", "w") as text_file:
+    #     print(f"{byteArray}", file=text_file)
+    
     image = Image.open(io.BytesIO(byteArray))
-    image.save("NTPServerImg.png")
+    image.save("NTPServerImg.jpg")
     image.show()
 
 def receive_zip_packet():

@@ -64,7 +64,6 @@ def get_message_value(value):
         refTimeWithValue = float128(currentTime[:-3] + "0" + str(value)) 
     else:
         refTimeWithValue = float128(currentTime[:-3] + str(value)) 
-    print(refTimeWithValue)
 
     return refTimeWithValue
 
