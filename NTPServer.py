@@ -53,9 +53,9 @@ def get_message_len(type):
     if(type == 1):
         receive_text_packet(arrayLength)
     elif(type == 2):
-        receive_image_packet(arrayLength)
+        receive_byte_packet(arrayLength, 2)
     elif(type == 3):
-        receive_zip_packet(arrayLength)
+        receive_byte_packet(arrayLength, 3)
 
 def receive_text_packet(messageLength):
     global ntpMessage
@@ -89,17 +89,16 @@ def receive_text_packet(messageLength):
         with open("NTPServerMessage.txt", "w") as text_file:
             print(f"{ntpMessage}", file=text_file)
 
-def receive_image_packet(imageLength):
+def receive_byte_packet(byteLength, type):
     global ntpArray
     global ntpMessage
     ntpArray = []
     ntpMessage = ""
     # Runs for the length of the message it is receiving
-    for i in range(imageLength):
+    for i in range(byteLength):
         bytesAddressPair = NTPServerSocket.recvfrom(bufferSize)
         
         message = bytesAddressPair[0]
-        address = bytesAddressPair[1]
 
         answer = NTPMethods.NTPPacket()
         answer = NTPMethods.unpack(answer, message, 1)
@@ -108,45 +107,26 @@ def receive_image_packet(imageLength):
         # print(ntpResponse)
 
         ntpArray.append(character)
-    
-    if(len(ntpArray) == imageLength):
-        # Writes NTP Message to a png file and displays a pop up with the image
-        byteArray = bytearray(ntpArray)
-        
-        image = Image.open(io.BytesIO(byteArray))
-        image.save("NTPServerImg.jpg")
 
-        ntpMessage = "Image"
-        # image.show()
+    if(type == 2):
+        if(len(ntpArray) == byteLength):
+            # Writes NTP Message to a png file and displays a pop up with the image
+            byteArray = bytearray(ntpArray)
+            
+            image = Image.open(io.BytesIO(byteArray))
+            image.save("NTPServerImg.jpg")
 
-def receive_zip_packet(zipLength):
-    global ntpArray
-    global ntpMessage
-    ntpArray = []
-    ntpMessage = ""
-    # Runs for the length of the message it is receiving
-    for i in range(zipLength):
-        bytesAddressPair = NTPServerSocket.recvfrom(bufferSize)
-        
-        message = bytesAddressPair[0]
-        address = bytesAddressPair[1]
+            ntpMessage = "Image"
+            # image.show()
+    elif(type == 3):
+        if(len(ntpArray) == byteLength):
+            # Writes NTP Message to a zip file
+            byteArray = bytearray(ntpArray)
 
-        answer = NTPMethods.NTPPacket()
-        answer = NTPMethods.unpack(answer, message, 1)
-        # ntpResponse = NTPMethods.to_display(answer)
-        character = NTPMethods.get_byte_digit(answer)
-        # print(ntpResponse)
+            with open("NTPServerZip.zip", 'wb') as zip_file:
+                zip_file.write(byteArray)
 
-        ntpArray.append(character)
-    
-    if(len(ntpArray) == zipLength):
-        # Writes NTP Message to a zip file
-        byteArray = bytearray(ntpArray)
-
-        with open("NTPServerZip.zip", 'wb') as zip_file:
-            zip_file.write(byteArray)
-
-    ntpMessage = "Zip"
+        ntpMessage = "Zip"
 
 # ----------- Create the 5 layouts this Window will display -----------
 layoutReceive = [   [sg.Text("Server in NTP Receive Mode")]     ]

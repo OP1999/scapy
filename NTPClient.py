@@ -40,13 +40,13 @@ def read_image_from_file(fileName):
             image_values = image.read()
             send_packet(get_message_value(2))
             send_packet(get_message_length(len(image_values)))
-            send_image_packet(image_values)
+            send_byte_packet(image_values)
     elif(os.path.splitext(fileName)[1] == '.jpg'):
         with open(fileName, "rb") as image:
             image_values = image.read()
             send_packet(get_message_value(2))
             send_packet(get_message_length(len(image_values)))
-            send_image_packet(image_values)
+            send_byte_packet(image_values)
     else:
         layout = 5
 
@@ -57,7 +57,7 @@ def read_zip_from_file(fileName):
             zip_values = zip.read()
             send_packet(get_message_value(3))
             send_packet(get_message_length(len(zip_values)))
-            send_zip_packet(zip_values)
+            send_byte_packet(zip_values)
     else:
         layout = 5
 
@@ -122,19 +122,15 @@ def send_text_packet(int_values):
     
     layout = 0
 
-def send_image_packet(int_values):
+def send_byte_packet(int_values):
     global layout
+    global ntpMessage
+    ntpMessage = ""
     # Runs for the length of the message it is sending
     for i in range(len(int_values)):
         send_packet(get_message_value(int_values[i]))
 
-    layout = 0
-
-def send_zip_packet(int_values):
-    global layout
-    # Runs for the length of the message it is sending
-    for i in range(len(int_values)):
-        send_packet(get_message_value(int_values[i]))
+    ntpMessage = "Bytes Sent"
 
     layout = 0
 
