@@ -1,3 +1,4 @@
+import zipfile
 from numpy import float128
 from scapy.all import *
 import socket
@@ -53,8 +54,8 @@ def get_message_len(type):
         receive_text_packet(arrayLength)
     elif(type == 2):
         receive_image_packet(arrayLength)
-    # elif(type == 3):
-        # receive_zip_packet(arrayLength)
+    elif(type == 3):
+        receive_zip_packet(arrayLength)
 
 def receive_text_packet(messageLength):
     global ntpMessage
@@ -103,7 +104,7 @@ def receive_image_packet(imageLength):
         answer = NTPMethods.NTPPacket()
         answer = NTPMethods.unpack(answer, message, 1)
         # ntpResponse = NTPMethods.to_display(answer)
-        character = NTPMethods.get_img_digit(answer)
+        character = NTPMethods.get_byte_digit(answer)
         # print(ntpResponse)
 
         ntpArray.append(character)
@@ -118,9 +119,34 @@ def receive_image_packet(imageLength):
         ntpMessage = "Image"
         # image.show()
 
-def receive_zip_packet():
-    print('zip')
+def receive_zip_packet(zipLength):
+    global ntpArray
+    global ntpMessage
+    ntpArray = []
+    ntpMessage = ""
+    # Runs for the length of the message it is receiving
+    for i in range(zipLength):
+        bytesAddressPair = NTPServerSocket.recvfrom(bufferSize)
+        
+        message = bytesAddressPair[0]
+        address = bytesAddressPair[1]
 
+        answer = NTPMethods.NTPPacket()
+        answer = NTPMethods.unpack(answer, message, 1)
+        # ntpResponse = NTPMethods.to_display(answer)
+        character = NTPMethods.get_byte_digit(answer)
+        # print(ntpResponse)
+
+        ntpArray.append(character)
+    
+    if(len(ntpArray) == zipLength):
+        # Writes NTP Message to a zip file
+        byteArray = bytearray(ntpArray)
+
+        with open("NTPServerZip.zip", 'wb') as zip_file:
+            zip_file.write(byteArray)
+
+    ntpMessage = "Zip"
 
 # ----------- Create the 5 layouts this Window will display -----------
 layoutReceive = [   [sg.Text("Server in NTP Receive Mode")]     ]

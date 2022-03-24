@@ -31,7 +31,7 @@ def read_text_from_file(fileName):
         send_packet(get_message_value(1))
         convert_text_to_ascii(textToSend)
     else:
-        layout = 4
+        layout = 5
 
 def read_image_from_file(fileName): 
     global layout
@@ -48,7 +48,18 @@ def read_image_from_file(fileName):
             send_packet(get_message_length(len(image_values)))
             send_image_packet(image_values)
     else:
-        layout = 4
+        layout = 5
+
+def read_zip_from_file(fileName): 
+    global layout
+    if(os.path.splitext(fileName)[1] == '.zip'):
+        with open(fileName, "rb") as zip:
+            zip_values = zip.read()
+            send_packet(get_message_value(3))
+            send_packet(get_message_length(len(zip_values)))
+            send_zip_packet(zip_values)
+    else:
+        layout = 5
 
 def convert_text_to_ascii(textToSend):
     ascii_values = [ord(character) for character in textToSend]
@@ -56,7 +67,7 @@ def convert_text_to_ascii(textToSend):
     send_text_packet(ascii_values)
 
 def get_message_value(value):
-    # Formats Current Time to Set string value
+    # Formats Current Time to Set string value - 3 digits - max of 255
     currentTime = f"{str(datetime.datetime.timestamp(datetime.datetime.utcnow()) + NTPMethods.date_diff)[:17]:0<17}"
     if(value < 10):
         refTimeWithValue = float128(currentTime[:-3] + "00" + str(value)) 
@@ -68,7 +79,7 @@ def get_message_value(value):
     return refTimeWithValue
 
 def get_message_length(value):
-    # Formats Current Time to Set string value
+    # Formats Current Time to Set string value - Upto 6 digits
     currentTime = f"{str(datetime.datetime.timestamp(datetime.datetime.utcnow()) + NTPMethods.date_diff)[:17][:-6]:0<17}"
     refTimeWithValue = float128(currentTime[:-len(str(value))] + str(value)) 
 
@@ -102,8 +113,6 @@ def send_text_packet(int_values):
         
         # Should Print letter 'R' if message successfully received
         ntpMessage += character
-
-        # time.sleep(1)
     
     if(len(ntpMessage) == len(int_values)):
         print(ntpMessage)
@@ -115,8 +124,14 @@ def send_text_packet(int_values):
 
 def send_image_packet(int_values):
     global layout
-    global ntpMessage
-    ntpMessage = ""
+    # Runs for the length of the message it is sending
+    for i in range(len(int_values)):
+        send_packet(get_message_value(int_values[i]))
+
+    layout = 0
+
+def send_zip_packet(int_values):
+    global layout
     # Runs for the length of the message it is sending
     for i in range(len(int_values)):
         send_packet(get_message_value(int_values[i]))
@@ -128,18 +143,21 @@ layoutSuccSent = [  [sg.Text(key="-ErrorMess-")],
                     [sg.Text(key="-NTPText-")]    ]
 
 layout1 = [ [sg.Text("Input the message you would like to send to the server")],
-            [sg.Input(key="-IN1-")]    ]
+            [sg.Input(key="-INMes-")]    ]
 
 layout2 = [ [sg.Text('Send Text File via NTP')],
-            [sg.Text("Choose a file: "), sg.Input(key="-IN2-", change_submits=True), sg.FileBrowse(key="-INFile-", file_types=(("Text Files", "*.txt")))] ]
+            [sg.Text("Choose a file: "), sg.Input(key="-INTxt-", change_submits=True), sg.FileBrowse(key="-INFBTxt-", file_types=(("Text Files", "*.txt")))] ]
             
 layout3 = [ [sg.Text('Send Image via NTP')],
-            [sg.Text("Choose a file: "), sg.Input(key="-IN3-", change_submits=True), sg.FileBrowse(key="-INImage-", file_types=(("Image Files", "*.jpg")))] ]
+            [sg.Text("Choose a file: "), sg.Input(key="-INImg-", change_submits=True), sg.FileBrowse(key="-INFBImage-", file_types=(("Image Files", "*.jpg")))] ]
+
+layout4 = [ [sg.Text('Send Zip via NTP')],
+            [sg.Text("Choose a file: "), sg.Input(key="-INZip-", change_submits=True), sg.FileBrowse(key="-INFBZip-", file_types=(("Zip Files", "*.zip")))] ]
 
 # ----------- Create actual layout using Columns and a row of Buttons
 winLayout = [  [sg.Text('Send via NTP')],
-            [sg.Button('Message'), sg.Button('Text File'), sg.Button('Image File')],
-            [sg.Column(layout1, key='-COL1-'), sg.Column(layout2, visible=False, key='-COL2-'), sg.Column(layout3, visible=False, key='-COL3-')],
+            [sg.Button('Message'), sg.Button('Text File'), sg.Button('Image File'), sg.Button('Zip File')],
+            [sg.Column(layout1, key='-COL1-'), sg.Column(layout2, visible=False, key='-COL2-'), sg.Column(layout3, visible=False, key='-COL3-'), sg.Column(layout4, visible=False, key='-COL4-')],
             [sg.Column(layoutSuccSent, key='-COLSuccSent-', visible=False)],
             [sg.Button('Send', key='-BTNSend-'), sg.Button('Exit', key='-BTNExit-')]    ]
 
@@ -155,17 +173,19 @@ while True:
     if event == "-BTNSend-":
         if layout == 1:
             send_packet(get_message_value(1))
-            convert_text_to_ascii(values["-IN1-"])
+            convert_text_to_ascii(values["-INMes-"])
         if layout == 2:
-            read_text_from_file(values["-IN2-"])
+            read_text_from_file(values["-INTxt-"])
         if layout == 3:
-            read_image_from_file(values["-IN3-"])
-            print(values["-IN3-"])
+            read_image_from_file(values["-INImg-"])
+        if layout == 4:
+            read_zip_from_file(values["-INZip-"])
     if event == 'Message':
         layout = 1
         window[f'-COLSuccSent-'].update(visible=False)
         window[f'-COL2-'].update(visible=False)
         window[f'-COL3-'].update(visible=False)
+        window[f'-COL4-'].update(visible=False)
         window[f'-BTNSend-'].update(visible=True)
         window[f'-COL1-'].update(visible=True)  
     elif event == 'Text File':
@@ -173,6 +193,7 @@ while True:
         window[f'-COLSuccSent-'].update(visible=False)
         window[f'-COL1-'].update(visible=False)
         window[f'-COL3-'].update(visible=False)
+        window[f'-COL4-'].update(visible=False)
         window[f'-BTNSend-'].update(visible=True)
         window[f'-COL2-'].update(visible=True)
     elif event == 'Image File':
@@ -180,8 +201,17 @@ while True:
         window[f'-COLSuccSent-'].update(visible=False)
         window[f'-COL1-'].update(visible=False)
         window[f'-COL2-'].update(visible=False)
+        window[f'-COL4-'].update(visible=False)
         window[f'-BTNSend-'].update(visible=True)
         window[f'-COL3-'].update(visible=True)
+    elif event == 'Zip File':
+        layout = 4
+        window[f'-COLSuccSent-'].update(visible=False)
+        window[f'-COL1-'].update(visible=False)
+        window[f'-COL2-'].update(visible=False)
+        window[f'-COL3-'].update(visible=False)
+        window[f'-BTNSend-'].update(visible=True)
+        window[f'-COL4-'].update(visible=True)
     if layout == 0:
         window[f'-ErrorMess-'].update("Client successfully Sent a Message")
         window[f'-NTPText-'].update('Message Received: ' + ntpMessage)
@@ -190,7 +220,8 @@ while True:
         window[f'-COL1-'].update(visible=False)
         window[f'-COL2-'].update(visible=False)
         window[f'-COL3-'].update(visible=False)
-    if layout == 4:
+        window[f'-COL4-'].update(visible=False)
+    if layout == 5:
         window[f'-ErrorMess-'].update("Unsuccessful Sending File")
         window[f'-NTPText-'].update('Wrong File Type - Please choose again')
         window[f'-COLSuccSent-'].update(visible=True)
@@ -198,4 +229,5 @@ while True:
         window[f'-COL1-'].update(visible=False)
         window[f'-COL2-'].update(visible=False)
         window[f'-COL3-'].update(visible=False)
+        window[f'-COL4-'].update(visible=False)
 window.close()

@@ -99,7 +99,7 @@ def get_message(self):
     letter = chr(self.character)
     return letter
 
-def get_img_digit(self):
+def get_byte_digit(self):
     digit = self.character
     return digit
 
