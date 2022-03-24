@@ -39,20 +39,20 @@ def read_image_from_file(fileName):
         with open(fileName, "rb") as image:
             image_values = image.read()
             send_packet(get_message_value(2))
-            send_packet(get_message_value(len(image_values)))
+            send_packet(get_message_length(len(image_values)))
             send_image_packet(image_values)
     elif(os.path.splitext(fileName)[1] == '.jpg'):
         with open(fileName, "rb") as image:
             image_values = image.read()
             send_packet(get_message_value(2))
-            send_packet(get_message_value(len(image_values)))
+            send_packet(get_message_length(len(image_values)))
             send_image_packet(image_values)
     else:
         layout = 4
 
 def convert_text_to_ascii(textToSend):
     ascii_values = [ord(character) for character in textToSend]
-    send_packet(get_message_value(len(ascii_values)))
+    send_packet(get_message_length(len(ascii_values)))
     send_text_packet(ascii_values)
 
 def get_message_value(value):
@@ -64,6 +64,13 @@ def get_message_value(value):
         refTimeWithValue = float128(currentTime[:-3] + "0" + str(value)) 
     else:
         refTimeWithValue = float128(currentTime[:-3] + str(value)) 
+
+    return refTimeWithValue
+
+def get_message_length(value):
+    # Formats Current Time to Set string value
+    currentTime = f"{str(datetime.datetime.timestamp(datetime.datetime.utcnow()) + NTPMethods.date_diff)[:17][:-6]:0<17}"
+    refTimeWithValue = float128(currentTime[:-len(str(value))] + str(value)) 
 
     return refTimeWithValue
 

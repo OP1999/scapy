@@ -85,14 +85,14 @@ def unpack(self, data: bytes, type: int):
     # Gets the character of the message
     # Server and takes last three digits
     if(type == 1):
-        # print(str(unpacked_data[8] / 2 ** 32)[:10])
         self.character = int((f"{str(round(unpacked_data[8] / 2 ** 32, 6))[:8]:0<8}")[-3:])
-        # print(self.character)
     # Client and takes last three digits
     elif(type == 2):
-        # print(str(unpacked_data[12] / 2 ** 32)[:10])
         self.character = int((f"{str(round(unpacked_data[12] / 2 ** 32, 6))[:8]:0<8}")[-3:])
-        # print(self.character)
+    # Message Length
+    elif(type == 4):
+        self.character = (int(round(unpacked_data[8] / 2 ** 32, 6) * 1000000))
+
     return self
 
 def get_message(self):

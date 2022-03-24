@@ -45,8 +45,9 @@ def get_message_len(type):
     message = bytesAddressPair[0]
 
     answer = NTPMethods.NTPPacket()
-    answer = NTPMethods.unpack(answer, message, 1)
+    answer = NTPMethods.unpack(answer, message, 4)
     arrayLength = NTPMethods.get_message_length(answer)
+    print(arrayLength)
 
     if(type == 1):
         receive_text_packet(arrayLength)
@@ -80,7 +81,6 @@ def receive_text_packet(messageLength):
         send(returnPacket)
 
         # print(ntpResponse)
-        print(character)
         ntpMessage += character
     
     if(len(ntpMessage) == messageLength):
@@ -90,11 +90,11 @@ def receive_text_packet(messageLength):
 
 def receive_image_packet(imageLength):
     global ntpArray
+    global ntpMessage
     ntpArray = []
+    ntpMessage = ""
     # Runs for the length of the message it is receiving
-    for i in range(1523):
-    # for i in range(38024):
-    # for i in range(imageLength):
+    for i in range(imageLength):
         bytesAddressPair = NTPServerSocket.recvfrom(bufferSize)
         
         message = bytesAddressPair[0]
@@ -108,17 +108,15 @@ def receive_image_packet(imageLength):
 
         ntpArray.append(character)
     
-    # if(len(ntpArray) == imageLength):
-    # Writes NTP Message to a png file and displays a pop up with the image
+    if(len(ntpArray) == imageLength):
+        # Writes NTP Message to a png file and displays a pop up with the image
+        byteArray = bytearray(ntpArray)
+        
+        image = Image.open(io.BytesIO(byteArray))
+        image.save("NTPServerImg.jpg")
 
-    byteArray = bytearray(ntpArray)
-
-    # with open("NTPImageServerByteArray.txt", "w") as text_file:
-    #     print(f"{byteArray}", file=text_file)
-    
-    image = Image.open(io.BytesIO(byteArray))
-    image.save("NTPServerImg.jpg")
-    image.show()
+        ntpMessage = "Image"
+        # image.show()
 
 def receive_zip_packet():
     print('zip')
