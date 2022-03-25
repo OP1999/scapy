@@ -1,3 +1,4 @@
+from numpy import float128
 from scapy.all import *
 import datetime
 import numpy as np
@@ -8,9 +9,18 @@ import docx
 # /UDP(sport='ntp',dport=20005,len=none,chksum=none)
 # /NTP(leap=1,version=4,mode='client',stratum=3,poll=10,precision=0.1,delay=0.1,dispersion=0.1,id=127.0.0.1,ref=5,orig=--,recv=1,sent=--)
 
+serverIP = "127.0.0.1"
+serverPort = 20005
+clientIP = "127.0.0.1"
+clientPort = 50005
+bufferSize = 1024
+
 base_time = datetime.datetime(1900, 1, 1)
 date_diff = (datetime.date(1970, 1, 1) - datetime.date(1900, 1, 1)).days * 24 * 3600
-# FORMAT_DIFF = (datetime.date(1970, 1, 1) - datetime.date(1900, 1, 1))
+
+ntpMode = 10
+ntpMessage = ""
+ntpArray = []
 
 class NTPPacket:
     _FORMAT = "!B B b b 11I"
@@ -75,13 +85,13 @@ def unpack(self, data: bytes, type: int):
         str((unpacked_data[6] >> 8) & 0xFF) + " " +  \
         str(unpacked_data[6] & 0xFF)
     self.reference = unpacked_data[7] + unpacked_data[8] / 2 ** 32  # 8 bytes
-    self.referenceDate = datetime.datetime.fromtimestamp(self.reference) - timedelta(days=25567)
+    self.referenceDate = datetime.datetime.fromtimestamp(self.reference) - datetime.timedelta(days=25567)
     self.originate = unpacked_data[9] + unpacked_data[10] / 2 ** 32  # 8 bytes
-    self.originateDate = datetime.datetime.fromtimestamp(self.originate) - timedelta(days=25567)
+    self.originateDate = datetime.datetime.fromtimestamp(self.originate) - datetime.timedelta(days=25567)
     self.receive = unpacked_data[11] + unpacked_data[12] / 2 ** 32  # 8 bytes
-    self.receiveDate = datetime.datetime.fromtimestamp(self.receive) - timedelta(days=25567)
+    self.receiveDate = datetime.datetime.fromtimestamp(self.receive) - datetime.timedelta(days=25567)
     self.transmit = unpacked_data[13] + unpacked_data[14] / 2 ** 32  # 8 bytes
-    self.transmitDate = datetime.datetime.fromtimestamp(self.transmit) - timedelta(days=25567)
+    self.transmitDate = datetime.datetime.fromtimestamp(self.transmit) - datetime.timedelta(days=25567)
     # Gets the character of the message
     # Server Response from Ref and takes last three digits
     if(type == 1):
@@ -95,19 +105,19 @@ def unpack(self, data: bytes, type: int):
 
     return self
 
-def get_message_char(self):
-    letter = chr(self.character)
-    return letter
-
 def get_byte_digit(self):
     digit = self.character
     return digit
 
-def get_message_type(self):
+def get_mess_char(self):
+    letter = chr(self.character)
+    return letter
+
+def get_mess_type(self):
     length = self.character
     return length
 
-def get_message_length(self):
+def get_mess_length(self):
     length = self.character
     return length
 
@@ -142,3 +152,27 @@ def getTextFromTxt(fileName):
     with open(fileName) as f:
             readFile = f.readlines()
     return readFile[0]
+
+def convert_text_to_ascii(textToSend):
+    ascii_values = [ord(character) for character in textToSend]
+    
+    return ascii_values
+
+def get_message_length(value):
+    # Formats Current Time to Set string value - Upto 6 digits
+    currentTime = f"{str(datetime.datetime.timestamp(datetime.datetime.utcnow()) + date_diff)[:17][:-6]:0<17}"
+    refTimeWithValue = float128(currentTime[:-len(str(value))] + str(value)) 
+
+    return refTimeWithValue
+
+def get_message_value(value):
+    # Formats Current Time to Set string value - 3 digits - max of 255
+    currentTime = f"{str(datetime.datetime.timestamp(datetime.datetime.utcnow()) + date_diff)[:17]:0<17}"
+    if(value < 10):
+        refTimeWithValue = float128(currentTime[:-3] + "00" + str(value)) 
+    elif(value >=  10 and value < 100):
+        refTimeWithValue = float128(currentTime[:-3] + "0" + str(value)) 
+    else:
+        refTimeWithValue = float128(currentTime[:-3] + str(value)) 
+
+    return refTimeWithValue

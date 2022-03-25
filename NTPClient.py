@@ -2,35 +2,29 @@ from numpy import float128
 from scapy.all import *
 import socket
 import NTPMethods
-import datetime
 import PySimpleGUI as sg
 import os.path
 
-localIP = "127.0.0.1"
-localPort = 50005
-destinationIP = "127.0.0.1"
-destinationPort = 20005
-bufferSize = 1024
+localIP = NTPMethods.clientIP
+localPort = NTPMethods.clientPort
+destinationIP = NTPMethods.serverIP
+destinationPort = NTPMethods.serverPort
 
 # Create a UDP socket at Client side
 NTPClientSocket = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
 NTPClientSocket.bind((localIP, localPort))
 print("NTP Client Up")
 
-# cryptoKey = 40
 global layout
+global ntpMode
 global ntpMessage
 
 def read_text_from_file(fileName):
     global layout
     if(os.path.splitext(fileName)[1] == '.docx'):
-        textToSend = NTPMethods.getTextFromDoc(fileName)
-        send_packet(get_message_value(1))
-        convert_text_to_ascii(textToSend)    
+        send_text(NTPMethods.getTextFromDoc(fileName))
     elif(os.path.splitext(fileName)[1] == '.txt'):
-        textToSend = NTPMethods.getTextFromTxt(fileName)
-        send_packet(get_message_value(1))
-        convert_text_to_ascii(textToSend)
+        send_text(NTPMethods.getTextFromTxt(fileName))
     else:
         layout = 5
 
@@ -39,14 +33,14 @@ def read_image_from_file(fileName):
     if(os.path.splitext(fileName)[1] == '.png'):
         with open(fileName, "rb") as image:
             image_values = image.read()
-            send_packet(get_message_value(2))
-            send_packet(get_message_length(len(image_values)))
+            send_packet(NTPMethods.get_message_value(2))
+            send_packet(NTPMethods.get_message_length(len(image_values)))
             send_byte_packet(image_values)
     elif(os.path.splitext(fileName)[1] == '.jpg'):
         with open(fileName, "rb") as image:
             image_values = image.read()
-            send_packet(get_message_value(2))
-            send_packet(get_message_length(len(image_values)))
+            send_packet(NTPMethods.get_message_value(2))
+            send_packet(NTPMethods.get_message_length(len(image_values)))
             send_byte_packet(image_values)
     else:
         layout = 5
@@ -56,84 +50,65 @@ def read_zip_from_file(fileName):
     if(os.path.splitext(fileName)[1] == '.zip'):
         with open(fileName, "rb") as zip:
             zip_values = zip.read()
-            send_packet(get_message_value(3))
-            send_packet(get_message_length(len(zip_values)))
+            send_packet(NTPMethods.get_message_value(3))
+            send_packet(NTPMethods.get_message_length(len(zip_values)))
             send_byte_packet(zip_values)
     else:
         layout = 5
 
-def convert_text_to_ascii(textToSend):
-    ascii_values = [ord(character) for character in textToSend]
-    send_packet(get_message_length(len(ascii_values)))
+def send_text(textToSend):
+    send_packet(NTPMethods.get_message_value(1))
+    ascii_values = NTPMethods.convert_text_to_ascii(textToSend)
+    send_packet(NTPMethods.get_message_length(len(ascii_values)))
     send_text_packet(ascii_values)
 
-def get_message_value(value):
-    # Formats Current Time to Set string value - 3 digits - max of 255
-    currentTime = f"{str(datetime.datetime.timestamp(datetime.datetime.utcnow()) + NTPMethods.date_diff)[:17]:0<17}"
-    if(value < 10):
-        refTimeWithValue = float128(currentTime[:-3] + "00" + str(value)) 
-    elif(value >=  10 and value < 100):
-        refTimeWithValue = float128(currentTime[:-3] + "0" + str(value)) 
-    else:
-        refTimeWithValue = float128(currentTime[:-3] + str(value)) 
-
-    return refTimeWithValue
-
-def get_message_length(value):
-    # Formats Current Time to Set string value - Upto 6 digits
-    currentTime = f"{str(datetime.datetime.timestamp(datetime.datetime.utcnow()) + NTPMethods.date_diff)[:17][:-6]:0<17}"
-    refTimeWithValue = float128(currentTime[:-len(str(value))] + str(value)) 
-
-    return refTimeWithValue
-
 def send_packet(refTimeWithOffset):
-    packet = IP(dst=localIP)/UDP(sport=localPort, dport=destinationPort)/NTP(version=4, mode='client', ref=refTimeWithOffset)
+    packet = IP(dst=destinationIP)/UDP(sport=localPort, dport=destinationPort)/NTP(version=4, mode='client', ref=refTimeWithOffset)
     send(packet)
 
 def send_text_packet(int_values):
     global layout
     global ntpMessage
+    global ntpMode
     ntpMessage = ""
     # Runs for the length of the message it is sending
     for i in range(len(int_values)):
-        send_packet(get_message_value(int_values[i]))
+        send_packet(NTPMethods.get_message_value(int_values[i]))
 
-        bytesAddressPair = NTPClientSocket.recvfrom(bufferSize)
-        message = bytesAddressPair[0]
-        
-        # address = bytesAddressPair[1]
-        # serverIP = "Server IP Address:{}".format(address)
-        # print(serverIP)
+    ntpMessage = str(receive_message_length())
 
-        answer = NTPMethods.NTPPacket()
-        answer = NTPMethods.unpack(answer, message, 2)
-        # ntpResponse = NTPMethods.to_display(answer)
-        character = NTPMethods.get_message_char(answer)
+    # ntpMessage = "Text Sent"
 
-        # print(ntpResponse)
-        
-        # Should Print letter 'R' if message successfully received
-        ntpMessage += character
-    
-    if(len(ntpMessage) == len(int_values)):
-        print(ntpMessage)
-        # Prints Message Received & Writes it to a text file then closes connection
-        with open("NTPClientMessage.txt", "w") as text_file:
-            print(f"{ntpMessage}", file=text_file)
-    
     layout = 0
+    ntpMode = 0
+
+    # if(ntpLength == len(int_values)):
+    #     # Prints Message Received & Writes it to a text file then closes connection
+    #     with open("NTPClientMessage.txt", "w") as text_file:
+    #         print(f"{ntpMessage}", file=text_file)
 
 def send_byte_packet(int_values):
     global layout
     global ntpMessage
+    global ntpMode
     ntpMessage = ""
     # Runs for the length of the message it is sending
     for i in range(len(int_values)):
-        send_packet(get_message_value(int_values[i]))
+        send_packet(NTPMethods.get_message_value(int_values[i]))
 
     ntpMessage = "Bytes Sent"
 
     layout = 0
+    ntpMode = 0
+
+def receive_message_length():
+    bytesAddressPair = NTPClientSocket.recvfrom(NTPMethods.bufferSize)
+    message = bytesAddressPair[0]
+
+    answer = NTPMethods.NTPPacket()
+    answer = NTPMethods.unpack(answer, message, 2)
+
+    return NTPMethods.get_mess_length(answer)
 
 # ----------- Create the layouts this Window will display -----------
 layoutReceive = [   [sg.Text("Server in NTP Receive Mode")]     ]
@@ -179,8 +154,7 @@ while True:
         break
     if event == "-BTNSend-":
         if layout == 1:
-            send_packet(get_message_value(1))
-            convert_text_to_ascii(values["-INMes-"])
+            send_text(values["-INMes-"])
         if layout == 2:
             read_text_from_file(values["-INTxt-"])
         if layout == 3:
@@ -216,10 +190,20 @@ while True:
         window[f'-BTNSend-'].update(visible=True)    
         window.refresh()
     if ntpMode == 0:
-        window[f'-NTPRecText-'].update('Message Received: ' + ntpMessage)
-        window[f'-COLReceive-'].update(visible=False)
-        window[f'-COLSuccReceive-'].update(visible=True)
+        window[f'-ErrorMess-'].update("Client successfully Sent a Message")
+        window[f'-NTPSentText-'].update('Server Received Message of Size: ' + ntpMessage)
+        window[f'-INMes-'].update("")
+        window[f'-INTxt-'].update("")
+        window[f'-INImg-'].update("")
+        window[f'-INZip-'].update("")
+        window[f'-COLMes-'].update(visible=False) 
+        window[f'-COLTxt-'].update(visible=False)  
+        window[f'-COLImg-'].update(visible=False)
+        window[f'-COLZip-'].update(visible=False) 
+        window[f'-COLBtn-'].update(visible=False) 
+        window[f'-COLSuccSent-'].update(visible=True)
         window.bring_to_front()
+        window.refresh()
     elif ntpMode == 2:
         if event == 'Message':
             layout = 1

@@ -1,17 +1,15 @@
 from numpy import float128
 from scapy.all import *
 import socket
-import datetime
 import NTPMethods
 import PySimpleGUI as sg
 import io
 from PIL import Image
 
-localIP = "127.0.0.1"
-localPort = 20005
-destinationIP = "127.0.0.1"
-destinationPort = 50005
-bufferSize = 1024
+localIP = NTPMethods.serverIP
+localPort = NTPMethods.serverPort
+destinationIP = NTPMethods.clientIP
+destinationPort = NTPMethods.clientPort
 
 # Create a UDP socket at Server side
 NTPServerSocket = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
@@ -25,8 +23,26 @@ global ntpArray
 ntpMessage = ""
 ntpArray = []
 
+def receive_client_packet():
+    global ntpMode
+    while(ntpMode == 1): 
+        print("NTP Server Listening Active")
+        answer = get_ntp_packet(1)
+
+        messageType = NTPMethods.get_mess_type(answer)
+        arrayLength = get_message_len()
+
+        if(messageType == 1):
+            receive_text_packet(arrayLength)
+        elif(messageType == 2):
+            receive_byte_packet(arrayLength, messageType)
+        elif(messageType == 3):
+            receive_byte_packet(arrayLength, messageType)
+        
+        ntpMode = 0 
+
 def get_ntp_packet(type):
-    bytesAddressPair = NTPServerSocket.recvfrom(bufferSize)
+    bytesAddressPair = NTPServerSocket.recvfrom(NTPMethods.bufferSize)
     message = bytesAddressPair[0]
 
     answer = NTPMethods.NTPPacket()
@@ -34,54 +50,25 @@ def get_ntp_packet(type):
 
     return answer
 
-def receive_client_packet():
-    global ntpMode
-    while(ntpMode == 1): 
-        print("NTP Server Listening Active")
-        answer = get_ntp_packet(1)
-        messageType = NTPMethods.get_message_type(answer)
-
-        get_message_len(messageType)
-        
-        ntpMode = 0 
-
-def get_message_len(type):
+def get_message_len():
     answer = get_ntp_packet(4)
-    arrayLength = NTPMethods.get_message_length(answer)
+    arrayLength = NTPMethods.get_mess_length(answer)
 
-    if(type == 1):
-        receive_text_packet(arrayLength)
-    elif(type == 2):
-        receive_byte_packet(arrayLength, 2)
-    elif(type == 3):
-        receive_byte_packet(arrayLength, 3)
+    return arrayLength
 
 def receive_text_packet(messageLength):
     global ntpMessage
     ntpMessage = ""
     # Runs for the length of the message it is receiving
     for i in range(messageLength):
-        # message = bytesAddressPair[0]
-        # address = bytesAddressPair[1]
-
-        # # clientIP = "Client IP Address:{}".format(address)   
-        # # print(clientIP)
-
-
         answer = get_ntp_packet(1)
         # ntpResponse = NTPMethods.to_display(answer)
-        character = NTPMethods.get_message_char(answer)
-
-        # Replies 'R' to show letter is received
-        recTimeWithMessage = float128(str(datetime.datetime.timestamp(datetime.datetime.utcnow()))[:-3] + "082") + NTPMethods.date_diff
-        
-           
-        # returnPacket = IP(dst=address[0])/UDP(sport=localPort,dport=address[1])/NTP(version=4, mode='server', recv=recTimeWithMessage)
-        returnPacket = IP(dst=destinationIP)/UDP(sport=localPort,dport=destinationPort)/NTP(version=4, mode='server', recv=recTimeWithMessage)
-        send(returnPacket)
+        character = NTPMethods.get_mess_char(answer)
 
         # print(ntpResponse)
         ntpMessage += character
+
+    send_received_mess_length(len(ntpMessage))
     
     if(len(ntpMessage) == messageLength):
         # Writes NTP Message to a text file and displays a pop up with the message
@@ -104,14 +91,13 @@ def receive_byte_packet(byteLength, type):
 
     if(type == 2):
         if(len(ntpArray) == byteLength):
-            # Writes NTP Message to a png file and displays a pop up with the image
+            # Writes NTP Message to an image file
             byteArray = bytearray(ntpArray)
             
             image = Image.open(io.BytesIO(byteArray))
             image.save("NTPServerImg.jpg")
 
-            ntpMessage = "Image"
-            # image.show()
+        ntpMessage = "Image"
     elif(type == 3):
         if(len(ntpArray) == byteLength):
             # Writes NTP Message to a zip file
@@ -121,6 +107,15 @@ def receive_byte_packet(byteLength, type):
                 zip_file.write(byteArray)
 
         ntpMessage = "Zip"
+    
+    send_received_mess_length(len(ntpArray))
+
+def send_received_mess_length(messageLength):
+    # Sends NTPPacket with size of the message length received
+    recTimeWithMessage = NTPMethods.get_message_value(messageLength)
+    
+    returnPacket = IP(dst=destinationIP)/UDP(sport=localPort,dport=destinationPort)/NTP(version=4, mode='server', recv=recTimeWithMessage)
+    send(returnPacket)
 
 # ----------- Create the layouts this Window will display -----------
 layoutReceive = [   [sg.Text("Server in NTP Receive Mode")]     ]
