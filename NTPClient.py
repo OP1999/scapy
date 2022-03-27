@@ -1,9 +1,9 @@
-from numpy import float128
 from scapy.all import *
 import socket
 import NTPMethods
 import PySimpleGUI as sg
-import os.path
+import io
+from PIL import Image
 
 localIP = NTPMethods.clientIP
 localPort = NTPMethods.clientPort
@@ -19,53 +19,6 @@ global layout
 global ntpMode
 global ntpMessage
 
-def read_text_from_file(fileName):
-    global layout
-    if(os.path.splitext(fileName)[1] == '.docx'):
-        send_text(NTPMethods.getTextFromDoc(fileName))
-    elif(os.path.splitext(fileName)[1] == '.txt'):
-        send_text(NTPMethods.getTextFromTxt(fileName))
-    else:
-        layout = 5
-
-def read_image_from_file(fileName): 
-    global layout
-    if(os.path.splitext(fileName)[1] == '.png'):
-        with open(fileName, "rb") as image:
-            image_values = image.read()
-            send_packet(NTPMethods.get_message_value(2))
-            send_packet(NTPMethods.get_message_length(len(image_values)))
-            send_byte_packet(image_values)
-    elif(os.path.splitext(fileName)[1] == '.jpg'):
-        with open(fileName, "rb") as image:
-            image_values = image.read()
-            send_packet(NTPMethods.get_message_value(2))
-            send_packet(NTPMethods.get_message_length(len(image_values)))
-            send_byte_packet(image_values)
-    else:
-        layout = 5
-
-def read_zip_from_file(fileName): 
-    global layout
-    if(os.path.splitext(fileName)[1] == '.zip'):
-        with open(fileName, "rb") as zip:
-            zip_values = zip.read()
-            send_packet(NTPMethods.get_message_value(3))
-            send_packet(NTPMethods.get_message_length(len(zip_values)))
-            send_byte_packet(zip_values)
-    else:
-        layout = 5
-
-def send_text(textToSend):
-    send_packet(NTPMethods.get_message_value(1))
-    ascii_values = NTPMethods.convert_text_to_ascii(textToSend)
-    send_packet(NTPMethods.get_message_length(len(ascii_values)))
-    send_text_packet(ascii_values)
-
-def send_packet(refTimeWithOffset):
-    packet = IP(dst=destinationIP)/UDP(sport=localPort, dport=destinationPort)/NTP(version=4, mode='client', ref=refTimeWithOffset)
-    send(packet)
-
 def send_text_packet(int_values):
     global layout
     global ntpMessage
@@ -73,19 +26,13 @@ def send_text_packet(int_values):
     ntpMessage = ""
     # Runs for the length of the message it is sending
     for i in range(len(int_values)):
-        send_packet(NTPMethods.get_message_value(int_values[i]))
+        NTPMethods.send_packet(NTPMethods.get_message_value(int_values[i]), destinationIP, localPort, destinationPort, 'client')
 
-    ntpMessage = str(receive_message_length())
+    # Gets the length of the recived message
+    ntpMessage = str(NTPMethods.get_message_len_method(NTPClientSocket))
 
-    # ntpMessage = "Text Sent"
-
-    layout = 0
-    ntpMode = 0
-
-    # if(ntpLength == len(int_values)):
-    #     # Prints Message Received & Writes it to a text file then closes connection
-    #     with open("NTPClientMessage.txt", "w") as text_file:
-    #         print(f"{ntpMessage}", file=text_file)
+    layout = 5
+    ntpMode = 3
 
 def send_byte_packet(int_values):
     global layout
@@ -94,30 +41,93 @@ def send_byte_packet(int_values):
     ntpMessage = ""
     # Runs for the length of the message it is sending
     for i in range(len(int_values)):
-        send_packet(NTPMethods.get_message_value(int_values[i]))
+        NTPMethods.send_packet(NTPMethods.get_message_value(int_values[i]), destinationIP, localPort, destinationPort, 'client')
+    
+    # Gets the length of the recived message
+    ntpMessage = str(NTPMethods.get_message_len_method(NTPClientSocket))
 
-    ntpMessage = "Bytes Sent"
+    layout = 5
+    ntpMode = 3
 
-    layout = 0
-    ntpMode = 0
+def receive_server_packet():
+    global ntpMode
+    while(ntpMode == 1): 
+        print("NTP Client Listening Active")
+        answer = NTPMethods.get_ntp_packet(NTPClientSocket, 1)
 
-def receive_message_length():
-    bytesAddressPair = NTPClientSocket.recvfrom(NTPMethods.bufferSize)
-    message = bytesAddressPair[0]
+        messageType = NTPMethods.get_mess_type(answer)
+        arrayLength = NTPMethods.get_message_len_method(NTPClientSocket)
 
-    answer = NTPMethods.NTPPacket()
-    answer = NTPMethods.unpack(answer, message, 2)
+        if(messageType == 1):
+            receive_text_packet(arrayLength)
+        elif(messageType == 2):
+            receive_byte_packet(arrayLength, messageType)
+        elif(messageType == 3):
+            receive_byte_packet(arrayLength, messageType)
+        
+        ntpMode = 0 
 
-    return NTPMethods.get_mess_length(answer)
+def receive_text_packet(messageLength):
+    global ntpMessage
+    ntpMessage = ""
+    # Runs for the length of the message it is receiving
+    for i in range(messageLength):
+        answer = NTPMethods.get_ntp_packet(NTPClientSocket, 1)
+        # ntpResponse = NTPMethods.to_display(answer)
+        character = NTPMethods.get_mess_char(answer)
+
+        # print(ntpResponse)
+        ntpMessage += character
+
+    # Sends the length of the message received
+    NTPMethods.send_packet(NTPMethods.get_message_length(len(ntpMessage)), destinationIP, localPort, destinationPort, 'client')
+    
+    if(len(ntpMessage) == messageLength):
+        # Writes NTP Message to a text file and displays a pop up with the message
+        with open("NTPClientMessage.txt", "w") as text_file:
+            print(f"{ntpMessage}", file=text_file)
+
+def receive_byte_packet(byteLength, type):
+    global ntpArray
+    global ntpMessage
+    ntpArray = []
+    ntpMessage = ""
+    # Runs for the length of the message it is receiving
+    for i in range(byteLength):
+        answer = NTPMethods.get_ntp_packet(NTPClientSocket, 1)
+        # ntpResponse = NTPMethods.to_display(answer)
+        character = NTPMethods.get_byte_digit(answer)
+        # print(ntpResponse)
+
+        ntpArray.append(character)
+
+    if(type == 2):
+        if(len(ntpArray) == byteLength):
+            # Writes NTP Message to an image file
+            byteArray = bytearray(ntpArray)
+            
+            image = Image.open(io.BytesIO(byteArray))
+            image.save("NTPClientImg.jpg")
+
+        ntpMessage = "Image"
+    elif(type == 3):
+        if(len(ntpArray) == byteLength):
+            # Writes NTP Message to a zip file
+            byteArray = bytearray(ntpArray)
+
+            with open("NTPClientZip.zip", 'wb') as zip_file:
+                zip_file.write(byteArray)
+
+        ntpMessage = "Zip"
+    
+    # Sends the length of the message received
+    NTPMethods.send_packet(NTPMethods.get_message_length(len(ntpArray)), destinationIP, localPort, destinationPort, 'client')
 
 # ----------- Create the layouts this Window will display -----------
-layoutReceive = [   [sg.Text("Server in NTP Receive Mode")]     ]
+layoutReceive = [   [sg.Text("Client in NTP Receive Mode")]     ]
 
-layoutSuccReceive = [   [sg.Text("Server successfully Received a Response")],
-                        [sg.Text(key="-NTPRecText-")]    ]
-                    
-layoutSuccSent = [  [sg.Text(key="-ErrorMess-")],
-                    [sg.Text(key="-NTPSentText-")]    ]
+layoutResponse = [   [sg.Text(key="-Mess-")],
+                        [sg.Text(key="-NTPText-")]    ]
 
 layoutButton = [    [sg.Button('Message'), sg.Button('Text File'), sg.Button('Image File'), sg.Button('Zip File')]    ]
 
@@ -138,9 +148,8 @@ winLayout = [   [sg.Text('Client')],
             [sg.Button('Receive Mode'), sg.Button('Send Mode')],
             [sg.Column(layoutReceive, key='-COLReceive-', visible=False)],
             [sg.Column(layoutButton, key='-COLBtn-', visible=False)],
-            [sg.Column(layoutSuccReceive, key='-COLSuccReceive-', visible=False)],
             [sg.Column(layoutMes, visible=False, key='-COLMes-'), sg.Column(layoutTxt, visible=False, key='-COLTxt-'), sg.Column(layoutImg, visible=False, key='-COLImg-'), sg.Column(layoutZip, visible=False, key='-COLZip-')],
-            [sg.Column(layoutSuccSent, key='-COLSuccSent-', visible=False)],
+            [sg.Column(layoutResponse, key='-COLResponse-', visible=False)],
             [sg.Button('Send', key='-BTNSend-', visible=False)], 
             [sg.Button('Exit', key='-BTNExit-')]    ]
 window = sg.Window('Send / Receive Data via NTP', winLayout, size=(500,300), element_justification='c')
@@ -148,50 +157,64 @@ window = sg.Window('Send / Receive Data via NTP', winLayout, size=(500,300), ele
 layout = 1  # The currently visible layout
 while True:
     event, values = window.read()
-    # print(event, values)
     if event in (None, '-BTNExit-'):
         NTPClientSocket.close()
         break
     if event == "-BTNSend-":
         if layout == 1:
-            send_text(values["-INMes-"])
+            send_text_packet(NTPMethods.send_text(values["-INMes-"], destinationIP, localPort, destinationPort, 'client'))
         if layout == 2:
-            read_text_from_file(values["-INTxt-"])
+            textToSend = NTPMethods.read_text_from_file(values["-INTxt-"], destinationIP, localPort, destinationPort, 'client')
+            if textToSend == 6:
+                layout = 6
+                ntpMode = 3
+            else:
+                send_text_packet(textToSend)
         if layout == 3:
-            read_image_from_file(values["-INImg-"])
+            byteToSend = NTPMethods.read_image_from_file(values["-INImg-"], destinationIP, localPort, destinationPort, 'client')
+            if byteToSend == 6:
+                layout = 6
+                ntpMode = 3
+            else:
+                send_byte_packet(byteToSend)
         if layout == 4:
-            read_zip_from_file(values["-INZip-"])
+            byteToSend = NTPMethods.read_zip_from_file(values["-INZip-"], destinationIP, localPort, destinationPort, 'client')
+            print(byteToSend)
+            if byteToSend == 6:
+                layout = 6
+                ntpMode = 3
+            else:
+                send_byte_packet(byteToSend)
     if event == 'Receive Mode':
         print('Receive')
         ntpMode = 1
         window[f'-COLBtn-'].update(visible=False) 
-        window[f'-COLSuccReceive-'].update(visible=False)
         window[f'-COLMes-'].update(visible=False)
         window[f'-COLTxt-'].update(visible=False)  
         window[f'-COLImg-'].update(visible=False)
         window[f'-COLZip-'].update(visible=False) 
-        window[f'-COLSuccSent-'].update(visible=False) 
+        window[f'-COLResponse-'].update(visible=False) 
         window[f'-BTNSend-'].update(visible=False) 
         window[f'-COLReceive-'].update(visible=True)        
         window.refresh()
-        # receive_client_packet() 
+        receive_server_packet() 
         window.refresh()
     elif event == 'Send Mode':
         print('Send')
         ntpMode = 2
-        window[f'-COLSuccReceive-'].update(visible=False)
+        window[f'-INMes-'].update("")
         window[f'-COLTxt-'].update(visible=False)  
         window[f'-COLImg-'].update(visible=False)
         window[f'-COLZip-'].update(visible=False) 
-        window[f'-COLSuccSent-'].update(visible=False) 
+        window[f'-COLResponse-'].update(visible=False) 
         window[f'-COLReceive-'].update(visible=False)  
         window[f'-COLBtn-'].update(visible=True) 
         window[f'-COLMes-'].update(visible=True) 
         window[f'-BTNSend-'].update(visible=True)    
         window.refresh()
     if ntpMode == 0:
-        window[f'-ErrorMess-'].update("Client successfully Sent a Message")
-        window[f'-NTPSentText-'].update('Server Received Message of Size: ' + ntpMessage)
+        window[f'-Mess-'].update("Client successfully Received a Message")
+        window[f'-NTPText-'].update('Message Received: ' + ntpMessage)
         window[f'-INMes-'].update("")
         window[f'-INTxt-'].update("")
         window[f'-INImg-'].update("")
@@ -200,8 +223,9 @@ while True:
         window[f'-COLTxt-'].update(visible=False)  
         window[f'-COLImg-'].update(visible=False)
         window[f'-COLZip-'].update(visible=False) 
-        window[f'-COLBtn-'].update(visible=False) 
-        window[f'-COLSuccSent-'].update(visible=True)
+        window[f'-COLBtn-'].update(visible=False)
+        window[f'-COLReceive-'].update(visible=False) 
+        window[f'-COLResponse-'].update(visible=True)
         window.bring_to_front()
         window.refresh()
     elif ntpMode == 2:
@@ -231,20 +255,23 @@ while True:
             window[f'-COLZip-'].update(visible=True)
     elif ntpMode == 3:    
         if layout == 5:
-            window[f'-ErrorMess-'].update("Client successfully Sent a Message")
-            window[f'-NTPSuccText-'].update('Message Received: ' + ntpMessage)
-            window[f'-COLSuccSent-'].update(visible=True)
+            window[f'-Mess-'].update("Client successfully Sent a Message")
+            window[f'-NTPText-'].update('Message Sent of size: ' + ntpMessage)
+            window[f'-COLResponse-'].update(visible=True)
+            window[f'-COLBtn-'].update(visible=False) 
             window[f'-BTNSend-'].update(visible=False)
-            window[f'-COL1-'].update(visible=False)
-            window[f'-COL2-'].update(visible=False)
-            window[f'-COL3-'].update(visible=False)
-            window[f'-COL4-'].update(visible=False)
+            window[f'-COLMes-'].update(visible=False)
+            window[f'-COLTxt-'].update(visible=False)
+            window[f'-COLZip-'].update(visible=False)
+            window[f'-COLImg-'].update(visible=False)
         elif layout == 6:
-            window[f'-ErrorMess-'].update("Unsuccessful Sending File")
-            window[f'-NTPRecText-'].update('Wrong File Type - Please choose again')
-            window[f'-COLSuccSent-'].update(visible=True)
+            window[f'-Mess-'].update("Unsuccessful Sending File")
+            window[f'-NTPText-'].update('Wrong File Type - Please choose again')
+            window[f'-COLResponse-'].update(visible=True)
+            window[f'-COLBtn-'].update(visible=False) 
             window[f'-BTNSend-'].update(visible=False)
-            window[f'-COL1-'].update(visible=False)
-            window[f'-COL2-'].update(visible=False)
-            window[f'-COL3-'].update(visible=False)
-            window[f'-COL4-'].update(visible=False)
+            window[f'-COLMes-'].update(visible=False)
+            window[f'-COLTxt-'].update(visible=False)
+            window[f'-COLZip-'].update(visible=False)
+            window[f'-COLImg-'].update(visible=False)
+window.close()

@@ -141,23 +141,6 @@ def to_display(self):
             "Transmit Date: {0.transmitDate}\n" \
             .format(self)
 
-def getTextFromDoc(fileName):
-    doc = docx.Document(fileName)
-    fullText = []
-    for para in doc.paragraphs:
-        fullText.append(para.text)
-    return '\n'.join(fullText)
-
-def getTextFromTxt(fileName):
-    with open(fileName) as f:
-            readFile = f.readlines()
-    return readFile[0]
-
-def convert_text_to_ascii(textToSend):
-    ascii_values = [ord(character) for character in textToSend]
-    
-    return ascii_values
-
 def get_message_length(value):
     # Formats Current Time to Set string value - Upto 6 digits
     currentTime = f"{str(datetime.datetime.timestamp(datetime.datetime.utcnow()) + date_diff)[:17][:-6]:0<17}"
@@ -176,3 +159,93 @@ def get_message_value(value):
         refTimeWithValue = float128(currentTime[:-3] + str(value)) 
 
     return refTimeWithValue
+
+# Reading From Files
+def read_text_from_file(fileName, destIp, locPort, destPort, mode):
+    global layout
+    if(os.path.splitext(fileName)[1] == '.docx'):
+        return send_text(getTextFromDoc(fileName), destIp, locPort, destPort, mode)
+    elif(os.path.splitext(fileName)[1] == '.txt'):
+        return send_text(getTextFromTxt(fileName), destIp, locPort, destPort, mode)
+    else:
+        return 6
+
+def read_image_from_file(fileName, destIp, locPort, destPort, mode): 
+    if(os.path.splitext(fileName)[1] == '.png'):
+        with open(fileName, "rb") as image:
+            image_values = image.read()
+            send_packet(get_message_value(2), destIp, locPort, destPort, mode)
+            send_packet(get_message_length(len(image_values)), destIp, locPort, destPort, mode)
+            return image_values
+    elif(os.path.splitext(fileName)[1] == '.jpg'):
+        with open(fileName, "rb") as image:
+            image_values = image.read()
+            send_packet(get_message_value(2), destIp, locPort, destPort, mode)
+            send_packet(get_message_length(len(image_values)), destIp, locPort, destPort, mode)
+            return image_values
+    else:
+        return 6
+
+def read_zip_from_file(fileName, destIp, locPort, destPort, mode):
+    if(os.path.splitext(fileName)[1] == '.zip'):
+        with open(fileName, "rb") as zip:
+            zip_values = zip.read()
+            print(zip_values)
+            send_packet(get_message_value(3), destIp, locPort, destPort, mode)
+            send_packet(get_message_length(len(zip_values)), destIp, locPort, destPort, mode)
+            return zip_values
+    else:
+        return 6
+
+def getTextFromDoc(fileName):
+    doc = docx.Document(fileName)
+    fullText = []
+    for para in doc.paragraphs:
+        fullText.append(para.text)
+    return '\n'.join(fullText)
+
+def getTextFromTxt(fileName):
+    with open(fileName) as f:
+            readFile = f.readlines()
+    return readFile[0]
+
+def convert_text_to_ascii(textToSend):
+    ascii_values = [ord(character) for character in textToSend]
+    
+    return ascii_values
+
+# Sending NTP Packet
+def send_text(textToSend, destIp, locPort, destPort, mode):
+    send_packet(get_message_value(1), destIp, locPort, destPort, mode)
+    ascii_values = convert_text_to_ascii(textToSend)
+    send_packet(get_message_length(len(ascii_values)), destIp, locPort, destPort, mode)
+    
+    return ascii_values
+
+def send_packet(refTimeWithOffset, destIp, locPort, destPort, mode):
+    packet = IP(dst=destIp)/UDP(sport=locPort, dport=destPort)/NTP(version=4, mode=mode, ref=refTimeWithOffset)
+    send(packet)
+
+def get_ntp_packet(NTPSocket, type):
+    bytesAddressPair = NTPSocket.recvfrom(bufferSize)
+    message = bytesAddressPair[0]
+
+    answer = NTPPacket()
+    answer = unpack(answer, message, type)
+
+    return answer
+
+def get_message_len_method(NTPServer):
+    answer = get_ntp_packet(NTPServer, 4)
+    arrayLength = get_mess_length(answer)
+
+    return arrayLength
+
+def receive_message_length_method(NTPSocket):
+    bytesAddressPair = NTPSocket.recvfrom(bufferSize)
+    message = bytesAddressPair[0]
+
+    answer = NTPPacket()
+    answer = unpack(answer, message, 2)
+
+    return get_mess_length(answer)
