@@ -95,7 +95,6 @@ def gui_window(window, event, values, NTPSocket, destinationIP, localPort, desti
         window[f'-COLReceive-'].update(visible=True)        
         window.refresh()
         response = NTPMethods.receive_packet(NTPSocket, destinationIP, localPort, destinationPort, NTPType) 
-        print(response)
         ntpMessage = response[0]
         ntpMode = response[1]
         window.refresh()

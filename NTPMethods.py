@@ -20,11 +20,6 @@ bufferSize = 1024
 base_time = datetime.datetime(1900, 1, 1)
 date_diff = (datetime.date(1970, 1, 1) - datetime.date(1900, 1, 1)).days * 24 * 3600
 
-global ntpMode
-global ntpMessage
-global ntpArray
-global layout
-
 class NTPPacket:
     _FORMAT = "!B B b b 11I"
     def __init__(self, version_number=4, mode=3, transmit=np.float64):
@@ -102,7 +97,7 @@ def unpack(self, data: bytes, type: int):
     # Client Response from Ori and takes last three digits
     elif(type == 2):
         self.character = int((f"{str(round(unpacked_data[12] / 2 ** 32, 6))[:8]:0<8}")[-3:])
-    # Message Length
+    # Takes 6 digits of fraction to get Message Length
     elif(type == 3):
         self.character = (int(round(unpacked_data[8] / 2 ** 32, 6) * 1000000))
     elif(type == 4):
@@ -110,7 +105,7 @@ def unpack(self, data: bytes, type: int):
 
     return self
 
-def get_byte_digit(self):
+def get_mess_val(self):
     digit = self.character
     return digit
 
@@ -118,13 +113,17 @@ def get_mess_char(self):
     letter = chr(self.character)
     return letter
 
-def get_mess_type(self):
-    length = self.character
-    return length
+def get_all_ntp_times(self):
+    referenceDate = self.referenceDate
+    originateDate = self.originateDate
+    receiveDate = self.receiveDate
+    transmitDate = self.transmitDate
+    return [referenceDate, originateDate, receiveDate, transmitDate]
 
-def get_mess_length(self):
-    length = self.character
-    return length
+def get_spec_ntp_times(self):
+    referenceDate = self.referenceDate
+    receiveDate = self.receiveDate
+    return [referenceDate, receiveDate]
 
 def to_display(self):
     return "Leap indicator: {0.leap_indicator}\n" \
@@ -233,6 +232,14 @@ def send_packet(timeWithOffset, destIp, locPort, destPort, NTPType):
 
     send(packet)
 
+def send_default_packet(destIp, locPort, destPort, NTPType):
+    if(NTPType == 'client'):
+        packet = IP(dst=destIp)/UDP(sport=locPort, dport=destPort)/NTP(version=4, mode=NTPType)
+    elif(NTPType == 'server'):
+        packet = IP(dst=destIp)/UDP(sport=locPort, dport=destPort)/NTP(version=4, mode=NTPType)
+
+    send(packet)
+
 def get_ntp_packet(NTPSocket, NTPType):
     bytesAddressPair = NTPSocket.recvfrom(bufferSize)
     message = bytesAddressPair[0]
@@ -247,7 +254,7 @@ def get_message_len_method(NTPSocket, NTPtype):
         answer = get_ntp_packet(NTPSocket, 3)
     elif(NTPtype == 'client'):
         answer = get_ntp_packet(NTPSocket, 4)
-    arrayLength = get_mess_length(answer)
+    arrayLength = get_mess_val(answer)
 
     return arrayLength
 
@@ -267,8 +274,11 @@ def receive_packet(NTPSocket, destIP, locPort, destPort, NTPtype):
     while(ntpMode == 1):
         answer = get_ntp_packet(NTPSocket, get_ntp_type(NTPtype))
 
-        messageType = get_mess_type(answer)
+        # Gets File Type of message and Length
+        messageType = get_mess_val(answer)
+        # send_default_packet(destIP, locPort, destPort, NTPtype)
         messageLength = get_message_len_method(NTPSocket, NTPtype)
+        # send_default_packet(destIP, locPort, destPort, NTPtype)
 
         if(messageType == 1):
             response = receive_text_packet(NTPSocket, messageLength, destIP, locPort, destPort, NTPtype)
@@ -286,6 +296,7 @@ def receive_text_packet(NTPSocket, messageLength, destIP, locPort, destPort, NTP
     # Runs for the length of the message it is receiving
     for i in range(messageLength):
         answer = get_ntp_packet(NTPSocket, get_ntp_type(NTPtype))
+        # send_default_packet(destIP, locPort, destPort, NTPtype)
         # ntpResponse = NTPMethods.to_display(answer)
         character = get_mess_char(answer)
 
@@ -310,8 +321,9 @@ def receive_byte_packet(NTPSocket, byteLength, byteType, destIP, locPort, destPo
     # Runs for the length of the message it is receiving
     for i in range(byteLength):
         answer = get_ntp_packet(NTPSocket, get_ntp_type(NTPtype))
+        # send_default_packet(destIP, locPort, destPort, NTPtype)
         # ntpResponse = NTPMethods.to_display(answer)
-        character = get_byte_digit(answer)
+        character = get_mess_val(answer)
         # print(ntpResponse)
 
         ntpArray.append(character)
