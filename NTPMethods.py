@@ -3,6 +3,8 @@ from scapy.all import *
 import datetime
 import numpy as np
 import docx
+import io
+from PIL import Image
 
 # Package Struct
 # IP(version=4,ihl= None,tos= 0x0,len= None,id= 1,flags= ,frag= 0,ttl= 64,proto= "udp",chksum= None,src= "127.0.0.1",dst= "127.0.0.1"
@@ -18,9 +20,10 @@ bufferSize = 1024
 base_time = datetime.datetime(1900, 1, 1)
 date_diff = (datetime.date(1970, 1, 1) - datetime.date(1900, 1, 1)).days * 24 * 3600
 
-ntpMode = 10
-ntpMessage = ""
-ntpArray = []
+global ntpMode
+global ntpMessage
+global ntpArray
+global layout
 
 class NTPPacket:
     _FORMAT = "!B B b b 11I"
@@ -100,8 +103,10 @@ def unpack(self, data: bytes, type: int):
     elif(type == 2):
         self.character = int((f"{str(round(unpacked_data[12] / 2 ** 32, 6))[:8]:0<8}")[-3:])
     # Message Length
-    elif(type == 4):
+    elif(type == 3):
         self.character = (int(round(unpacked_data[8] / 2 ** 32, 6) * 1000000))
+    elif(type == 4):
+        self.character = (int(round(unpacked_data[12] / 2 ** 32, 6) * 1000000))
 
     return self
 
@@ -141,58 +146,56 @@ def to_display(self):
             "Transmit Date: {0.transmitDate}\n" \
             .format(self)
 
-def get_message_length(value):
+def get_message_length_time(value):
     # Formats Current Time to Set string value - Upto 6 digits
     currentTime = f"{str(datetime.datetime.timestamp(datetime.datetime.utcnow()) + date_diff)[:17][:-6]:0<17}"
-    refTimeWithValue = float128(currentTime[:-len(str(value))] + str(value)) 
+    timeWithValue = float128(currentTime[:-len(str(value))] + str(value)) 
 
-    return refTimeWithValue
+    return timeWithValue
 
-def get_message_value(value):
+def get_message_value_time(value):
     # Formats Current Time to Set string value - 3 digits - max of 255
     currentTime = f"{str(datetime.datetime.timestamp(datetime.datetime.utcnow()) + date_diff)[:17]:0<17}"
     if(value < 10):
-        refTimeWithValue = float128(currentTime[:-3] + "00" + str(value)) 
+        timeWithValue = float128(currentTime[:-3] + "00" + str(value)) 
     elif(value >=  10 and value < 100):
-        refTimeWithValue = float128(currentTime[:-3] + "0" + str(value)) 
+        timeWithValue = float128(currentTime[:-3] + "0" + str(value)) 
     else:
-        refTimeWithValue = float128(currentTime[:-3] + str(value)) 
+        timeWithValue = float128(currentTime[:-3] + str(value)) 
 
-    return refTimeWithValue
+    return timeWithValue
 
 # Reading From Files
-def read_text_from_file(fileName, destIp, locPort, destPort, mode):
-    global layout
+def read_text_from_file(fileName, destIp, locPort, destPort, NTPType):
     if(os.path.splitext(fileName)[1] == '.docx'):
-        return send_text(getTextFromDoc(fileName), destIp, locPort, destPort, mode)
+        return send_text(getTextFromDoc(fileName), destIp, locPort, destPort, NTPType)
     elif(os.path.splitext(fileName)[1] == '.txt'):
-        return send_text(getTextFromTxt(fileName), destIp, locPort, destPort, mode)
+        return send_text(getTextFromTxt(fileName), destIp, locPort, destPort, NTPType)
     else:
         return 6
 
-def read_image_from_file(fileName, destIp, locPort, destPort, mode): 
+def read_image_from_file(fileName, destIp, locPort, destPort, NTPType): 
     if(os.path.splitext(fileName)[1] == '.png'):
         with open(fileName, "rb") as image:
             image_values = image.read()
-            send_packet(get_message_value(2), destIp, locPort, destPort, mode)
-            send_packet(get_message_length(len(image_values)), destIp, locPort, destPort, mode)
+            send_packet(get_message_value_time(2), destIp, locPort, destPort, NTPType)
+            send_packet(get_message_length_time(len(image_values)), destIp, locPort, destPort, NTPType)
             return image_values
     elif(os.path.splitext(fileName)[1] == '.jpg'):
         with open(fileName, "rb") as image:
             image_values = image.read()
-            send_packet(get_message_value(2), destIp, locPort, destPort, mode)
-            send_packet(get_message_length(len(image_values)), destIp, locPort, destPort, mode)
+            send_packet(get_message_value_time(2), destIp, locPort, destPort, NTPType)
+            send_packet(get_message_length_time(len(image_values)), destIp, locPort, destPort, NTPType)
             return image_values
     else:
         return 6
 
-def read_zip_from_file(fileName, destIp, locPort, destPort, mode):
+def read_zip_from_file(fileName, destIp, locPort, destPort, NTPType):
     if(os.path.splitext(fileName)[1] == '.zip'):
         with open(fileName, "rb") as zip:
             zip_values = zip.read()
-            print(zip_values)
-            send_packet(get_message_value(3), destIp, locPort, destPort, mode)
-            send_packet(get_message_length(len(zip_values)), destIp, locPort, destPort, mode)
+            send_packet(get_message_value_time(3), destIp, locPort, destPort, NTPType)
+            send_packet(get_message_length_time(len(zip_values)), destIp, locPort, destPort, NTPType)
             return zip_values
     else:
         return 6
@@ -215,37 +218,153 @@ def convert_text_to_ascii(textToSend):
     return ascii_values
 
 # Sending NTP Packet
-def send_text(textToSend, destIp, locPort, destPort, mode):
-    send_packet(get_message_value(1), destIp, locPort, destPort, mode)
+def send_text(textToSend, destIp, locPort, destPort, NTPType):
+    send_packet(get_message_value_time(1), destIp, locPort, destPort, NTPType)
     ascii_values = convert_text_to_ascii(textToSend)
-    send_packet(get_message_length(len(ascii_values)), destIp, locPort, destPort, mode)
+    send_packet(get_message_length_time(len(ascii_values)), destIp, locPort, destPort, NTPType)
     
     return ascii_values
 
-def send_packet(refTimeWithOffset, destIp, locPort, destPort, mode):
-    packet = IP(dst=destIp)/UDP(sport=locPort, dport=destPort)/NTP(version=4, mode=mode, ref=refTimeWithOffset)
+def send_packet(timeWithOffset, destIp, locPort, destPort, NTPType):
+    if(NTPType == 'client'):
+        packet = IP(dst=destIp)/UDP(sport=locPort, dport=destPort)/NTP(version=4, mode=NTPType, ref=timeWithOffset)
+    elif(NTPType == 'server'):
+        packet = IP(dst=destIp)/UDP(sport=locPort, dport=destPort)/NTP(version=4, mode=NTPType, recv=timeWithOffset)
+
     send(packet)
 
-def get_ntp_packet(NTPSocket, type):
+def get_ntp_packet(NTPSocket, NTPType):
     bytesAddressPair = NTPSocket.recvfrom(bufferSize)
     message = bytesAddressPair[0]
 
     answer = NTPPacket()
-    answer = unpack(answer, message, type)
+    answer = unpack(answer, message, NTPType)
 
     return answer
 
-def get_message_len_method(NTPServer):
-    answer = get_ntp_packet(NTPServer, 4)
+def get_message_len_method(NTPSocket, NTPtype):
+    if(NTPtype == 'server'):
+        answer = get_ntp_packet(NTPSocket, 3)
+    elif(NTPtype == 'client'):
+        answer = get_ntp_packet(NTPSocket, 4)
     arrayLength = get_mess_length(answer)
 
     return arrayLength
 
-def receive_message_length_method(NTPSocket):
-    bytesAddressPair = NTPSocket.recvfrom(bufferSize)
-    message = bytesAddressPair[0]
+def get_ntp_type(NTPtype):
+    if(NTPtype == 'server'):
+        return 1
+    elif(NTPtype == 'client'):
+        return 2
 
-    answer = NTPPacket()
-    answer = unpack(answer, message, 2)
 
-    return get_mess_length(answer)
+def receive_packet(NTPSocket, destIP, locPort, destPort, NTPtype):
+    ntpMode = 1
+    if(NTPtype == 'client'):   
+        print("NTP Client Listening Active")
+    elif(NTPtype == 'server'):   
+        print("NTP Server Listening Active")
+    while(ntpMode == 1):
+        answer = get_ntp_packet(NTPSocket, get_ntp_type(NTPtype))
+
+        messageType = get_mess_type(answer)
+        messageLength = get_message_len_method(NTPSocket, NTPtype)
+
+        if(messageType == 1):
+            response = receive_text_packet(NTPSocket, messageLength, destIP, locPort, destPort, NTPtype)
+        elif(messageType == 2):
+            response = receive_byte_packet(NTPSocket, messageLength, messageType, destIP, locPort, destPort, NTPtype)
+        elif(messageType == 3):
+            response = receive_byte_packet(NTPSocket, messageLength, messageType, destIP, locPort, destPort, NTPtype)
+        
+        ntpMode = response [1]
+    
+    return response
+
+def receive_text_packet(NTPSocket, messageLength, destIP, locPort, destPort, NTPtype):
+    ntpMessage = ""
+    # Runs for the length of the message it is receiving
+    for i in range(messageLength):
+        answer = get_ntp_packet(NTPSocket, get_ntp_type(NTPtype))
+        # ntpResponse = NTPMethods.to_display(answer)
+        character = get_mess_char(answer)
+
+        # print(ntpResponse)
+        ntpMessage += character
+
+    # Sends the length of the message received
+    send_packet(get_message_length_time(len(ntpMessage)), destIP, locPort, destPort, NTPtype)
+
+    if(len(ntpMessage) == messageLength):
+        # Writes NTP Message to a text file and displays a pop up with the message
+        with open("NTPCliServMessage.txt", "w") as text_file:
+            print(f"{ntpMessage}", file=text_file)
+
+    ntpMode = 0
+
+    return(ntpMessage, ntpMode)
+
+def receive_byte_packet(NTPSocket, byteLength, byteType, destIP, locPort, destPort, NTPtype):
+    ntpArray = []
+    ntpMessage = ""
+    # Runs for the length of the message it is receiving
+    for i in range(byteLength):
+        answer = get_ntp_packet(NTPSocket, get_ntp_type(NTPtype))
+        # ntpResponse = NTPMethods.to_display(answer)
+        character = get_byte_digit(answer)
+        # print(ntpResponse)
+
+        ntpArray.append(character)
+
+    if(byteType == 2):
+        if(len(ntpArray) == byteLength):
+            # Writes NTP Message to an image file
+            byteArray = bytearray(ntpArray)
+            
+            image = Image.open(io.BytesIO(byteArray))
+            image.save("NTPCliServImg.jpg")
+
+        ntpMessage = "Image"
+        
+    elif(byteType == 3):
+        if(len(ntpArray) == byteLength):
+            # Writes NTP Message to a zip file
+            byteArray = bytearray(ntpArray)
+
+            with open("NTPCliServZip.zip", 'wb') as zip_file:
+                zip_file.write(byteArray)
+
+        ntpMessage = "Zip"
+    
+    # Sends the length of the message received
+    send_packet(get_message_length_time(len(ntpArray)), destIP, locPort, destPort, NTPtype)
+
+    ntpMode = 0
+
+    return(ntpMessage, ntpArray, ntpMode)
+
+def send_text_packet(NTPSocket, int_values, destIP, locPort, destPort, NTPtype):
+    # Runs for the length of the message it is sending
+    for i in range(len(int_values)):
+        send_packet(get_message_value_time(int_values[i]), destIP, locPort, destPort, NTPtype)
+
+    # Gets the length of the recived message
+    ntpMessage = str(get_message_len_method(NTPSocket, NTPtype))
+
+    layout = 5
+    ntpMode = 3
+
+    return(ntpMessage, layout, ntpMode)
+
+def send_byte_packet(NTPSocket, int_values, destIP, locPort, destPort, NTPtype):
+    # Runs for the length of the message it is sending
+    for i in range(len(int_values)):
+        send_packet(get_message_value_time(int_values[i]), destIP, locPort, destPort, NTPtype)
+
+    # Gets the length of the recived message
+    ntpMessage = str(get_message_len_method(NTPSocket, NTPtype))
+
+    layout = 5
+    ntpMode = 3
+
+    return(ntpMessage, layout, ntpMode)
