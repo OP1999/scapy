@@ -12,9 +12,9 @@ from PIL import Image
 # /NTP(leap=1,version=4,mode='client',stratum=3,poll=10,precision=0.1,delay=0.1,dispersion=0.1,id=127.0.0.1,ref=5,orig=--,recv=1,sent=--)
 
 serverIP = "127.0.0.1"
-serverPort = 20005
+serverPort = 123
 clientIP = "127.0.0.1"
-clientPort = 50005
+clientPort = 1023
 bufferSize = 1024
 
 base_time = datetime.datetime(1900, 1, 1)
@@ -341,7 +341,7 @@ def receive_byte_packet(NTPSocket, byteLength, byteType, destIP, locPort, destPo
 
     ntpMode = 0
 
-    return(ntpMessage, ntpArray, ntpMode)
+    return(ntpMessage, ntpMode)
 
 def send_text_packet(NTPSocket, int_values, destIP, locPort, destPort, NTPtype):
     # Runs for the length of the message it is sending
