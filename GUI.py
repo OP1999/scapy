@@ -60,30 +60,34 @@ def gui_window(window, event, values, NTPSocket, destinationIP, localPort, desti
     if event == "-BTNSend-":
         if layout == 1:
             response = NTPMethods.send_text_packet(NTPSocket, NTPMethods.send_text(values["-INMes-"], destinationIP, localPort, destinationPort, NTPType), destinationIP, localPort, destinationPort, NTPType)
-        if layout == 2:
+        elif layout == 2:
             textToSend = NTPMethods.read_text_from_file(values["-INTxt-"], destinationIP, localPort, destinationPort, NTPType)
             if textToSend == 6:
                 layout = 6
                 ntpMode = 3
+                response = 0
             else:
                 response = NTPMethods.send_text_packet(NTPSocket, textToSend, destinationIP, localPort, destinationPort, NTPType)
-        if layout == 3:
+        elif layout == 3:
             byteToSend = NTPMethods.read_image_from_file(values["-INImg-"], destinationIP, localPort, destinationPort, NTPType)
             if byteToSend == 6:
                 layout = 6
                 ntpMode = 3
+                response = 0
             else:
                 response = NTPMethods.send_byte_packet(NTPSocket, byteToSend, destinationIP, localPort, destinationPort, NTPType)
-        if layout == 4:
+        elif layout == 4:
             byteToSend = NTPMethods.read_zip_from_file(values["-INZip-"], destinationIP, localPort, destinationPort, NTPType)
             if byteToSend == 6:
                 layout = 6
                 ntpMode = 3
+                response = 0
             else:
                 response = NTPMethods.send_byte_packet(NTPSocket, byteToSend, destinationIP, localPort, destinationPort, NTPType)
-        ntpMessage = response[0]
-        layout = response[1]
-        ntpMode = response[2]
+        if(response != 0):
+            ntpMessage = response[0]
+            layout = response[1]
+            ntpMode = response[2]
     if event == 'Receive Mode':
         ntpMessage = ""
         layout = 0
