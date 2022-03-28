@@ -17,7 +17,6 @@ clientIP = "127.0.0.1"
 clientPort = 1023
 bufferSize = 1024
 
-base_time = datetime.datetime(1900, 1, 1)
 date_diff = (datetime.date(1970, 1, 1) - datetime.date(1900, 1, 1)).days * 24 * 3600
 
 class NTPPacket:
@@ -147,14 +146,14 @@ def to_display(self):
 
 def get_message_length_time(value):
     # Formats Current Time to Set string value - Upto 6 digits
-    currentTime = f"{str(datetime.datetime.timestamp(datetime.datetime.utcnow()) + date_diff)[:17][:-6]:0<17}"
+    currentTime = f"{str(datetime.datetime.timestamp(datetime.datetime.now()) + date_diff)[:17][:-6]:0<17}"
     timeWithValue = float128(currentTime[:-len(str(value))] + str(value)) 
 
     return timeWithValue
 
 def get_message_value_time(value):
     # Formats Current Time to Set string value - 3 digits - max of 255
-    currentTime = f"{str(datetime.datetime.timestamp(datetime.datetime.utcnow()) + date_diff)[:17]:0<17}"
+    currentTime = f"{str(datetime.datetime.timestamp(datetime.datetime.now()) + date_diff)[:17]:0<17}"
     if(value < 10):
         timeWithValue = float128(currentTime[:-3] + "00" + str(value)) 
     elif(value >=  10 and value < 100):
