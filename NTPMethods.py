@@ -1,9 +1,12 @@
+import os
+import struct
+import io
 from numpy import float128
 from scapy.all import *
+from scapy.layers.inet import IP, UDP
+from scapy.layers.ntp import NTP
 import datetime
-import numpy as np
 import docx
-import io
 from PIL import Image
 
 # These Values can be changed to users liking
@@ -17,7 +20,7 @@ date_diff = (datetime.date(1970, 1, 1) - datetime.date(1900, 1, 1)).days * 24 * 
 
 class NTPPacket:
     _FORMAT = "!B B b b 11I"
-    def __init__(self, version_number=4, mode=3, transmit=np.float64):
+    def __init__(self, version_number=4, mode=3, transmit=float128):
         # Necessary of enter leap second (2 bits)
         self.leap_indicator = 0
         # Version of protocol (3 bits)
