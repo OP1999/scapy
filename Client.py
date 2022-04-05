@@ -14,15 +14,7 @@ NTPSocket = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
 NTPSocket.bind((localIP, localPort))
 print("NTP Client Up")
 
-global layout
-global ntpMode
-global ntpMessage
-
 window = sg.Window('Client', GUI.winLayout, size=(500,300), element_justification='c')
-
-layout = 1  # The currently visible layout
-ntpMessage = ""
-ntpMode = 0
 
 while True:
     event, values = window.read()

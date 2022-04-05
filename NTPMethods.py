@@ -6,11 +6,7 @@ import docx
 import io
 from PIL import Image
 
-# Package Struct
-# IP(version=4,ihl= None,tos= 0x0,len= None,id= 1,flags= ,frag= 0,ttl= 64,proto= "udp",chksum= None,src= "127.0.0.1",dst= "127.0.0.1"
-# /UDP(sport='ntp',dport=20005,len=none,chksum=none)
-# /NTP(leap=1,version=4,mode='client',stratum=3,poll=10,precision=0.1,delay=0.1,dispersion=0.1,id=127.0.0.1,ref=5,orig=--,recv=1,sent=--)
-
+# These Values can be changed to users liking
 serverIP = "127.0.0.1"
 serverPort = 123
 clientIP = "127.0.0.1"
@@ -93,25 +89,30 @@ def unpack(self, data: bytes, type: int):
     # Server Response from Ref and takes last three digits
     if(type == 1):
         self.character = int((f"{str(round(unpacked_data[8] / 2 ** 32, 6))[:8]:0<8}")[-3:])
-    # Client Response from Ori and takes last three digits
+    # Client Response from Rec and takes last three digits
     elif(type == 2):
         self.character = int((f"{str(round(unpacked_data[12] / 2 ** 32, 6))[:8]:0<8}")[-3:])
-    # Takes 6 digits of fraction to get Message Length
+    # Takes entire 6 digits of fraction to get Message Length
+    # Server Response from Ref
     elif(type == 3):
         self.character = (int(round(unpacked_data[8] / 2 ** 32, 6) * 1000000))
+    # Client Response from Rec
     elif(type == 4):
         self.character = (int(round(unpacked_data[12] / 2 ** 32, 6) * 1000000))
 
     return self
 
+# Returns the value of the character from above (usually less than 255)
 def get_mess_val(self):
     digit = self.character
     return digit
 
+# Returns the character as a letter
 def get_mess_char(self):
     letter = chr(self.character)
     return letter
 
+# Returns all the NTP timestamps
 def get_all_ntp_times(self):
     referenceDate = self.referenceDate
     originateDate = self.originateDate
@@ -119,11 +120,13 @@ def get_all_ntp_times(self):
     transmitDate = self.transmitDate
     return [referenceDate, originateDate, receiveDate, transmitDate]
 
+# Returns the edited timestamps
 def get_spec_ntp_times(self):
     referenceDate = self.referenceDate
     receiveDate = self.receiveDate
     return [referenceDate, receiveDate]
 
+# Returns all the packet info
 def to_display(self):
     return "Leap indicator: {0.leap_indicator}\n" \
             "Version number: {0.version_number}\n" \
@@ -144,6 +147,7 @@ def to_display(self):
             "Transmit Date: {0.transmitDate}\n" \
             .format(self)
 
+# Returns the legnth of the message - used for initial packet
 def get_message_length_time(value):
     # Formats Current Time to Set string value - Upto 6 digits
     currentTime = f"{str(datetime.datetime.timestamp(datetime.datetime.now()) + date_diff)[:17][:-6]:0<17}"
@@ -151,6 +155,7 @@ def get_message_length_time(value):
 
     return timeWithValue
 
+# Edits the timestamp to include the byte information
 def get_message_value_time(value):
     # Formats Current Time to Set string value - 3 digits - max of 255
     currentTime = f"{str(datetime.datetime.timestamp(datetime.datetime.now()) + date_diff)[:17]:0<17}"
@@ -163,7 +168,7 @@ def get_message_value_time(value):
 
     return timeWithValue
 
-# Reading From Files
+# Reading From Text / Doc Files
 def read_text_from_file(fileName, destIp, locPort, destPort, NTPType):
     if(os.path.splitext(fileName)[1] == '.docx'):
         return send_text(getTextFromDoc(fileName), destIp, locPort, destPort, NTPType)
@@ -172,6 +177,7 @@ def read_text_from_file(fileName, destIp, locPort, destPort, NTPType):
     else:
         return 6
 
+# Reading From png / jpg Files
 def read_image_from_file(fileName, destIp, locPort, destPort, NTPType): 
     if(os.path.splitext(fileName)[1] == '.png'):
         with open(fileName, "rb") as image:
@@ -188,6 +194,7 @@ def read_image_from_file(fileName, destIp, locPort, destPort, NTPType):
     else:
         return 6
 
+# Reading From zip File
 def read_zip_from_file(fileName, destIp, locPort, destPort, NTPType):
     if(os.path.splitext(fileName)[1] == '.zip'):
         with open(fileName, "rb") as zip:
@@ -198,6 +205,7 @@ def read_zip_from_file(fileName, destIp, locPort, destPort, NTPType):
     else:
         return 6
 
+# Reads the text from doc file
 def getTextFromDoc(fileName):
     doc = docx.Document(fileName)
     fullText = []
@@ -205,17 +213,19 @@ def getTextFromDoc(fileName):
         fullText.append(para.text)
     return '\n'.join(fullText)
 
+# Reads the text from txt file
 def getTextFromTxt(fileName):
     with open(fileName) as f:
             readFile = f.readlines()
     return readFile[0]
 
+# Converts text to ascii values
 def convert_text_to_ascii(textToSend):
     ascii_values = [ord(character) for character in textToSend]
     
     return ascii_values
 
-# Sending NTP Packet
+# Sending NTP TextPacket
 def send_text(textToSend, destIp, locPort, destPort, NTPType):
     send_packet(get_message_value_time(1), destIp, locPort, destPort, NTPType)
     ascii_values = convert_text_to_ascii(textToSend)
@@ -223,6 +233,7 @@ def send_text(textToSend, destIp, locPort, destPort, NTPType):
     
     return ascii_values
 
+# Sending edited NTP Packet as either client or server
 def send_packet(timeWithOffset, destIp, locPort, destPort, NTPType):
     if(NTPType == 'client'):
         packet = IP(dst=destIp)/UDP(sport=locPort, dport=destPort)/NTP(version=4, mode=NTPType, ref=timeWithOffset)
@@ -231,6 +242,7 @@ def send_packet(timeWithOffset, destIp, locPort, destPort, NTPType):
 
     send(packet)
 
+# Sending a default NTP Packet as either client or server
 def send_default_packet(destIp, locPort, destPort, NTPType):
     if(NTPType == 'client'):
         packet = IP(dst=destIp)/UDP(sport=locPort, dport=destPort)/NTP(version=4, mode=NTPType)
@@ -239,6 +251,7 @@ def send_default_packet(destIp, locPort, destPort, NTPType):
 
     send(packet)
 
+# Listens for NTP Packet sent to socket
 def get_ntp_packet(NTPSocket, NTPType):
     bytesAddressPair = NTPSocket.recvfrom(bufferSize)
     message = bytesAddressPair[0]
@@ -248,6 +261,7 @@ def get_ntp_packet(NTPSocket, NTPType):
 
     return answer
 
+# Method for Listening for NTP packet with the message length
 def get_message_len_method(NTPSocket, NTPtype):
     if(NTPtype == 'server'):
         answer = get_ntp_packet(NTPSocket, 3)
@@ -257,13 +271,14 @@ def get_message_len_method(NTPSocket, NTPtype):
 
     return arrayLength
 
+# Sets whether to be run in client or server mode
 def get_ntp_type(NTPtype):
     if(NTPtype == 'server'):
         return 1
     elif(NTPtype == 'client'):
         return 2
 
-
+# Receives packets, identifies packet type and length
 def receive_packet(NTPSocket, destIP, locPort, destPort, NTPtype):
     ntpMode = 1
     if(NTPtype == 'client'):   
@@ -290,23 +305,28 @@ def receive_packet(NTPSocket, destIP, locPort, destPort, NTPtype):
     
     return response
 
+# Receives the text packets for txt and doc files
 def receive_text_packet(NTPSocket, messageLength, destIP, locPort, destPort, NTPtype):
     ntpMessage = ""
     # Runs for the length of the message it is receiving
     for i in range(messageLength):
         answer = get_ntp_packet(NTPSocket, get_ntp_type(NTPtype))
+
+        # # for returning a default ntp packet response when a packet is received
         # send_default_packet(destIP, locPort, destPort, NTPtype)
+
+        # # for printing the ntp packet received
         # ntpResponse = NTPMethods.to_display(answer)
-        character = get_mess_char(answer)
-
         # print(ntpResponse)
-        ntpMessage += character
 
-    # Sends the length of the message received
+        character = get_mess_char(answer)
+        ntpMessage += character
+    
+    # Sends the length of the message received for verification
     send_packet(get_message_length_time(len(ntpMessage)), destIP, locPort, destPort, NTPtype)
 
     if(len(ntpMessage) == messageLength):
-        # Writes NTP Message to a text file and displays a pop up with the message
+        # Writes NTP Message received to a text file
         with open("NTPCliServMessage.txt", "w") as text_file:
             print(f"{ntpMessage}", file=text_file)
 
@@ -314,19 +334,27 @@ def receive_text_packet(NTPSocket, messageLength, destIP, locPort, destPort, NTP
 
     return(ntpMessage, ntpMode)
 
+# Receives the byte packets for image and zip files
 def receive_byte_packet(NTPSocket, byteLength, byteType, destIP, locPort, destPort, NTPtype):
     ntpArray = []
     ntpMessage = ""
     # Runs for the length of the message it is receiving
     for i in range(byteLength):
         answer = get_ntp_packet(NTPSocket, get_ntp_type(NTPtype))
-        # send_default_packet(destIP, locPort, destPort, NTPtype)
-        # ntpResponse = NTPMethods.to_display(answer)
-        character = get_mess_val(answer)
-        # print(ntpResponse)
 
+        # # for returning a default ntp packet response when a packet is received
+        # send_default_packet(destIP, locPort, destPort, NTPtype)
+        
+        # # for printing the ntp packet received
+        # ntpResponse = NTPMethods.to_display(answer)
+        # print(ntpResponse)
+        
+        character = get_mess_val(answer)
         ntpArray.append(character)
 
+    # Sends the length of the message received for verification
+    send_packet(get_message_length_time(len(ntpArray)), destIP, locPort, destPort, NTPtype)
+    
     if(byteType == 2):
         if(len(ntpArray) == byteLength):
             # Writes NTP Message to an image file
@@ -345,15 +373,13 @@ def receive_byte_packet(NTPSocket, byteLength, byteType, destIP, locPort, destPo
             with open("NTPCliServZip.zip", 'wb') as zip_file:
                 zip_file.write(byteArray)
 
-        ntpMessage = "Zip"
-    
-    # Sends the length of the message received
-    send_packet(get_message_length_time(len(ntpArray)), destIP, locPort, destPort, NTPtype)
+        ntpMessage = "Zip"   
 
     ntpMode = 0
 
     return(ntpMessage, ntpMode)
 
+# send the text packet
 def send_text_packet(NTPSocket, int_values, destIP, locPort, destPort, NTPtype):
     # Runs for the length of the message it is sending
     for i in range(len(int_values)):
@@ -362,11 +388,13 @@ def send_text_packet(NTPSocket, int_values, destIP, locPort, destPort, NTPtype):
     # Gets the length of the recived message
     ntpMessage = str(get_message_len_method(NTPSocket, NTPtype))
 
+    # reset layout
     layout = 5
     ntpMode = 3
 
     return(ntpMessage, layout, ntpMode)
 
+# send the byte packet
 def send_byte_packet(NTPSocket, int_values, destIP, locPort, destPort, NTPtype):
     # Runs for the length of the message it is sending
     for i in range(len(int_values)):
@@ -375,6 +403,7 @@ def send_byte_packet(NTPSocket, int_values, destIP, locPort, destPort, NTPtype):
     # Gets the length of the recived message
     ntpMessage = str(get_message_len_method(NTPSocket, NTPtype))
 
+    # reset layout
     layout = 5
     ntpMode = 3
 
