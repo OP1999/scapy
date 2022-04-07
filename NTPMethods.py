@@ -2,7 +2,7 @@ import os
 import struct
 import io
 from numpy import float128
-from scapy.all import *
+from scapy import sendrecv
 from scapy.layers.inet import IP, UDP
 from scapy.layers.ntp import NTP
 import datetime
@@ -243,7 +243,7 @@ def send_packet(timeWithOffset, destIp, locPort, destPort, NTPType):
     elif(NTPType == 'server'):
         packet = IP(dst=destIp)/UDP(sport=locPort, dport=destPort)/NTP(version=4, mode=NTPType, recv=timeWithOffset)
 
-    send(packet)
+    sendrecv.send(packet)
 
 # Sending a default NTP Packet as either client or server
 def send_default_packet(destIp, locPort, destPort, NTPType):
@@ -252,7 +252,7 @@ def send_default_packet(destIp, locPort, destPort, NTPType):
     elif(NTPType == 'server'):
         packet = IP(dst=destIp)/UDP(sport=locPort, dport=destPort)/NTP(version=4, mode=NTPType)
 
-    send(packet)
+    sendrecv.send(packet)
 
 # Listens for NTP Packet sent to socket
 def get_ntp_packet(NTPSocket, NTPType):

@@ -45,12 +45,25 @@ def clear_columns(window):
     window[f'-COLTxt-'].update(visible=False)
     window[f'-COLZip-'].update(visible=False)
     window[f'-COLImg-'].update(visible=False)
+    window[f'-COLMes-'].hide_row() 
 
 def clear_text(window):
     window[f'-INMes-'].update("")
     window[f'-INTxt-'].update("")
     window[f'-INImg-'].update("")
     window[f'-INZip-'].update("")
+
+def exit_btn(window):
+    window[f'-BTNExit-'].update(visible=False)
+    window[f'-BTNExit-'].hide_row() 
+    window[f'-BTNExit-'].update(visible=True)
+    window[f'-BTNExit-'].unhide_row() 
+
+def send_btn(window):
+    window[f'-BTNSend-'].update(visible=False)
+    window[f'-BTNSend-'].hide_row() 
+    window[f'-BTNSend-'].update(visible=True)
+    window[f'-BTNSend-'].unhide_row() 
 
 def gui_window(window, event, values, NTPSocket, destinationIP, localPort, destinationPort, NTPType):
     global layout
@@ -96,11 +109,17 @@ def gui_window(window, event, values, NTPSocket, destinationIP, localPort, desti
         clear_columns(window)
         window[f'-COLResponse-'].update(visible=False) 
         window[f'-BTNSend-'].update(visible=False) 
-        window[f'-COLReceive-'].update(visible=True)        
+        window[f'-COLBtn-'].hide_row() 
+        window[f'-COLResponse-'].hide_row() 
+        window[f'-BTNSend-'].hide_row()
+        window[f'-COLReceive-'].update(visible=True)    
+        window[f'-COLReceive-'].unhide_row()
+        exit_btn(window)     
         window.refresh()
         response = NTPMethods.receive_packet(NTPSocket, destinationIP, localPort, destinationPort, NTPType) 
         ntpMessage = response[0]
         ntpMode = response[1]
+        exit_btn(window)
         window.refresh()
     elif event == 'Send Mode':
         ntpMessage = ""
@@ -110,9 +129,16 @@ def gui_window(window, event, values, NTPSocket, destinationIP, localPort, desti
         clear_text(window)
         window[f'-COLResponse-'].update(visible=False) 
         window[f'-COLReceive-'].update(visible=False)  
-        window[f'-COLBtn-'].update(visible=True) 
-        window[f'-COLMes-'].update(visible=True) 
-        window[f'-BTNSend-'].update(visible=True)    
+        window[f'-COLResponse-'].hide_row()
+        window[f'-COLReceive-'].hide_row()  
+        window[f'-COLBtn-'].update(visible=True)
+        window[f'-COLMes-'].update(visible=True)
+        window[f'-BTNSend-'].update(visible=True) 
+        window[f'-COLBtn-'].unhide_row() 
+        window[f'-COLMes-'].unhide_row()  
+        window[f'-BTNSend-'].unhide_row() 
+        send_btn(window)
+        exit_btn(window)
         window.refresh()
     if ntpMode == 0:
         window[f'-Mess-'].update(NTPType + " successfully Received a Message")
@@ -120,9 +146,12 @@ def gui_window(window, event, values, NTPSocket, destinationIP, localPort, desti
         clear_text(window)
         clear_columns(window)
         window[f'-COLBtn-'].update(visible=False)
-        window[f'-COLReceive-'].update(visible=False) 
+        window[f'-COLReceive-'].update(visible=False)
+        window[f'-COLBtn-'].hide_row() 
+        window[f'-COLReceive-'].hide_row() 
         window[f'-COLResponse-'].update(visible=True)
-        window.bring_to_front()
+        window[f'-COLResponse-'].unhide_row() 
+        exit_btn(window)
         window.refresh()
         ntpMessage = ""
     elif ntpMode == 2:
@@ -132,36 +161,49 @@ def gui_window(window, event, values, NTPSocket, destinationIP, localPort, desti
             window[f'-COLImg-'].update(visible=False)
             window[f'-COLZip-'].update(visible=False)
             window[f'-COLMes-'].update(visible=True)  
+            window[f'-COLMes-'].unhide_row() 
         elif event in 'Text File':
             layout = 2
             window[f'-COLMes-'].update(visible=False)
             window[f'-COLImg-'].update(visible=False)
             window[f'-COLZip-'].update(visible=False)
             window[f'-COLTxt-'].update(visible=True)
+            window[f'-COLTxt-'].unhide_row() 
         elif event in 'Image File':
             layout = 3
             window[f'-COLMes-'].update(visible=False)
             window[f'-COLTxt-'].update(visible=False)
             window[f'-COLZip-'].update(visible=False)
             window[f'-COLImg-'].update(visible=True)
+            window[f'-COLImg-'].unhide_row() 
         elif event in 'Zip File':
             layout = 4
             window[f'-COLMes-'].update(visible=False)
             window[f'-COLTxt-'].update(visible=False)
             window[f'-COLImg-'].update(visible=False)
             window[f'-COLZip-'].update(visible=True)
+            window[f'-COLZip-'].unhide_row() 
+        send_btn(window)
+        exit_btn(window)
     elif ntpMode == 3:    
         if layout == 5:
             window[f'-Mess-'].update(NTPType + " successfully Sent a Message")
             window[f'-NTPText-'].update('Message Sent of size: ' + ntpMessage)
             window[f'-COLResponse-'].update(visible=True)
+            window[f'-COLResponse-'].unhide_row() 
             window[f'-COLBtn-'].update(visible=False) 
             window[f'-BTNSend-'].update(visible=False)
+            window[f'-COLBtn-'].hide_row() 
+            window[f'-BTNSend-'].hide_row() 
             clear_columns(window)
         elif layout == 6:
             window[f'-Mess-'].update("Unsuccessful Sending File")
             window[f'-NTPText-'].update('Wrong File Type - Please choose again')
             window[f'-COLResponse-'].update(visible=True)
+            window[f'-COLResponse-'].unhide_row() 
             window[f'-COLBtn-'].update(visible=False) 
             window[f'-BTNSend-'].update(visible=False)
+            window[f'-COLBtn-'].hide_row() 
+            window[f'-BTNSend-'].hide_row()
             clear_columns(window)
+        exit_btn(window)
