@@ -14,7 +14,7 @@ NTPSocket = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
 NTPSocket.bind((localIP, localPort))
 print("NTP Server Up")
 
-window = sg.Window('Server', GUI.winLayout, size=(500,300), element_justification='c')
+window = sg.Window('Server', GUI.centredLayout, size=(480,220))
 
 while True:
     event, values = window.read()

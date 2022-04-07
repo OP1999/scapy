@@ -31,14 +31,17 @@ layoutZip = [ [sg.Text('Send Zip via NTP')],
             [sg.Text("Choose a file: "), sg.Input(key="-INZip-", change_submits=True), sg.FileBrowse(key="-INFBZip-", file_types=(("Zip Files", "*.zip")))] ]
 
 # ----------- Create actual layout using Columns and a row of Buttons
-winLayout = [   [sg.Text(key='-NTPType-')],
-            [sg.Button('Receive Mode'), sg.Button('Send Mode')],
+winLayout = [   [sg.Button('Receive Mode'), sg.Button('Send Mode')],
             [sg.Column(layoutReceive, key='-COLReceive-', visible=False)],
             [sg.Column(layoutButton, key='-COLBtn-', visible=False)],
             [sg.Column(layoutMes, visible=False, key='-COLMes-'), sg.Column(layoutTxt, visible=False, key='-COLTxt-'), sg.Column(layoutImg, visible=False, key='-COLImg-'), sg.Column(layoutZip, visible=False, key='-COLZip-')],
             [sg.Column(layoutResponse, key='-COLResponse-', visible=False)],
             [sg.Button('Send', key='-BTNSend-', visible=False)], 
             [sg.Button('Exit', key='-BTNExit-')]    ]
+
+centredLayout = [  [sg.VPush()],
+            [sg.Push(), sg.Column(winLayout, element_justification='c'), sg.Push()],
+            [sg.VPush()]    ]
 
 def clear_columns(window):
     window[f'-COLMes-'].update(visible=False)
