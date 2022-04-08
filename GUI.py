@@ -11,6 +11,8 @@ layout = 1
 ntpMessage = ""
 
 # ----------- Create the layouts this Window will display -----------
+layoutNTPBtns = [   [sg.Button('Receive Mode'), sg.Button('Send Mode')]    ]
+
 layoutReceive = [   [sg.Text("NTP Receive Mode")]     ]
 
 layoutResponse = [   [sg.Text(key="-Mess-")],
@@ -31,7 +33,7 @@ layoutZip = [ [sg.Text('Send Zip via NTP')],
             [sg.Text("Choose a file: "), sg.Input(key="-INZip-", change_submits=True), sg.FileBrowse(key="-INFBZip-", file_types=(("Zip Files", "*.zip")))] ]
 
 # ----------- Create actual layout using Columns and a row of Buttons
-winLayout = [   [sg.Button('Receive Mode'), sg.Button('Send Mode')],
+winLayout = [   [sg.Column(layoutNTPBtns, key='-COLNTPBtns-')],
             [sg.Column(layoutReceive, key='-COLReceive-', visible=False)],
             [sg.Column(layoutButton, key='-COLBtn-', visible=False)],
             [sg.Column(layoutMes, visible=False, key='-COLMes-'), sg.Column(layoutTxt, visible=False, key='-COLTxt-'), sg.Column(layoutImg, visible=False, key='-COLImg-'), sg.Column(layoutZip, visible=False, key='-COLZip-')],
@@ -74,32 +76,42 @@ def gui_window(window, event, values, NTPSocket, destinationIP, localPort, desti
     global ntpMessage
     global response
     if event == "-BTNSend-":
+        response = 0
         if layout == 1:
-            response = NTPMethods.send_text_packet(NTPSocket, NTPMethods.send_text(values["-INMes-"], destinationIP, localPort, destinationPort, NTPType), destinationIP, localPort, destinationPort, NTPType)
+            if values["-INMes-"] != "":
+                response = NTPMethods.send_text_packet(NTPSocket, NTPMethods.send_text(values["-INMes-"], destinationIP, localPort, destinationPort, NTPType), destinationIP, localPort, destinationPort, NTPType)
+            else:
+                sg.Popup('Enter a Message to Send')
         elif layout == 2:
-            textToSend = NTPMethods.read_text_from_file(values["-INTxt-"], destinationIP, localPort, destinationPort, NTPType)
-            if textToSend == 6:
-                layout = 6
-                ntpMode = 3
-                response = 0
+            if values["-INTxt-"] != "":
+                textToSend = NTPMethods.read_text_from_file(values["-INTxt-"], destinationIP, localPort, destinationPort, NTPType)
+                if textToSend == 6:
+                    layout = 6
+                    ntpMode = 3
+                else:
+                    response = NTPMethods.send_text_packet(NTPSocket, textToSend, destinationIP, localPort, destinationPort, NTPType)
             else:
-                response = NTPMethods.send_text_packet(NTPSocket, textToSend, destinationIP, localPort, destinationPort, NTPType)
+                sg.Popup('Select a file to Send')
         elif layout == 3:
-            byteToSend = NTPMethods.read_image_from_file(values["-INImg-"], destinationIP, localPort, destinationPort, NTPType)
-            if byteToSend == 6:
-                layout = 6
-                ntpMode = 3
-                response = 0
+            if values["-INImg-"] != "":
+                byteToSend = NTPMethods.read_image_from_file(values["-INImg-"], destinationIP, localPort, destinationPort, NTPType)
+                if byteToSend == 6:
+                    layout = 6
+                    ntpMode = 3 
+                else:
+                    response = NTPMethods.send_byte_packet(NTPSocket, byteToSend, destinationIP, localPort, destinationPort, NTPType)
             else:
-                response = NTPMethods.send_byte_packet(NTPSocket, byteToSend, destinationIP, localPort, destinationPort, NTPType)
+                sg.Popup('Select a file to Send')
         elif layout == 4:
-            byteToSend = NTPMethods.read_zip_from_file(values["-INZip-"], destinationIP, localPort, destinationPort, NTPType)
-            if byteToSend == 6:
-                layout = 6
-                ntpMode = 3
-                response = 0
+            if values["-INZip-"] != "":
+                byteToSend = NTPMethods.read_zip_from_file(values["-INZip-"], destinationIP, localPort, destinationPort, NTPType)
+                if byteToSend == 6:
+                    layout = 6
+                    ntpMode = 3                    
+                else:
+                    response = NTPMethods.send_byte_packet(NTPSocket, byteToSend, destinationIP, localPort, destinationPort, NTPType)
             else:
-                response = NTPMethods.send_byte_packet(NTPSocket, byteToSend, destinationIP, localPort, destinationPort, NTPType)
+                sg.Popup('Select a file to Send')
         if(response != 0):
             ntpMessage = response[0]
             layout = response[1]
@@ -112,9 +124,11 @@ def gui_window(window, event, values, NTPSocket, destinationIP, localPort, desti
         clear_columns(window)
         window[f'-COLResponse-'].update(visible=False) 
         window[f'-BTNSend-'].update(visible=False) 
+        window[f'-COLNTPBtns-'].update(visible=False) 
         window[f'-COLBtn-'].hide_row() 
         window[f'-COLResponse-'].hide_row() 
         window[f'-BTNSend-'].hide_row()
+        window[f'-COLNTPBtns-'].hide_row() 
         window[f'-COLReceive-'].update(visible=True)    
         window[f'-COLReceive-'].unhide_row()
         exit_btn(window)     
@@ -153,7 +167,9 @@ def gui_window(window, event, values, NTPSocket, destinationIP, localPort, desti
         window[f'-COLBtn-'].hide_row() 
         window[f'-COLReceive-'].hide_row() 
         window[f'-COLResponse-'].update(visible=True)
+        window[f'-COLNTPBtns-'].update(visible=True) 
         window[f'-COLResponse-'].unhide_row() 
+        window[f'-COLNTPBtns-'].unhide_row() 
         exit_btn(window)
         window.refresh()
         ntpMessage = ""
@@ -192,7 +208,9 @@ def gui_window(window, event, values, NTPSocket, destinationIP, localPort, desti
         if layout == 5:
             window[f'-Mess-'].update(NTPType + " successfully Sent a Message")
             window[f'-NTPText-'].update('Message Sent of size: ' + ntpMessage)
+            window[f'-COLNTPBtns-'].update(visible=True) 
             window[f'-COLResponse-'].update(visible=True)
+            window[f'-COLNTPBtns-'].unhide_row() 
             window[f'-COLResponse-'].unhide_row() 
             window[f'-COLBtn-'].update(visible=False) 
             window[f'-BTNSend-'].update(visible=False)
@@ -202,7 +220,9 @@ def gui_window(window, event, values, NTPSocket, destinationIP, localPort, desti
         elif layout == 6:
             window[f'-Mess-'].update("Unsuccessful Sending File")
             window[f'-NTPText-'].update('Wrong File Type - Please choose again')
+            window[f'-COLNTPBtns-'].update(visible=True) 
             window[f'-COLResponse-'].update(visible=True)
+            window[f'-COLNTPBtns-'].unhide_row() 
             window[f'-COLResponse-'].unhide_row() 
             window[f'-COLBtn-'].update(visible=False) 
             window[f'-BTNSend-'].update(visible=False)
