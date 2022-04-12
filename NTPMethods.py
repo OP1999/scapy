@@ -335,6 +335,9 @@ def receive_text_packet(NTPSocket, messageLength, destIP, locPort, destPort, NTP
 
     ntpMode = 0
 
+    if(len(ntpMessage) > 30):
+        ntpMessage = "Text"
+
     return(ntpMessage, ntpMode)
 
 # Receives the byte packets for image and zip files
